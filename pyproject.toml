@@ -1,0 +1,37 @@
+[project]
+name = "beancount-mcp"
+dynamic = ["version"]
+description = "A suite of services and integrations for agents to use Beancount"
+readme = "README.md"
+requires-python = ">=3.12"
+dependencies = [
+    "beancount>=3.2.3",
+    "fastapi>=0.165.0",
+    "pydantic-settings>=2.16.3",
+    "uvicorn>=0.54.0",
+]
+
+[build-system]
+requires = ["hatchling", "hatch-vcs"]
+build-backend = "hatchling.build"
+
+[tool.hatch.version]
+source = "vcs"
+
+[tool.hatch.build.hooks.vcs]
+version-file = "src/beancount_mcp/_version.py"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/beancount_mcp"]
+
+[dependency-groups]
+dev = [
+    "httpx2>=2.16.2",
+    "pytest>=9.2.0",
+]
+
+[project.scripts]
+beancount-mcp = "beancount_mcp.__main__:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
