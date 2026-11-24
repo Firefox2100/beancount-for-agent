@@ -9,13 +9,16 @@ from beancount_mcp.ledger.errors import (
 )
 from beancount_mcp.ledger.pending import PendingStore
 from beancount_mcp.ledger.store import LedgerStore
+from beancount_mcp.services.actions import ActionService
 from beancount_mcp.models import (
+    ActionRequest,
     Caller,
     ChangeStatus,
     DeleteDirective,
     DeleteTransaction,
     Operation,
     PendingChange,
+    SubmitChangeRequest,
     UpdateDirective,
     UpdateTransaction,
 )
@@ -34,19 +37,19 @@ def _target_id(operation: Operation) -> str | None:
 class ChangeService:
     """Proposed changes: submit, amend, approve, reject and withdraw."""
 
-    def __init__(self, store: LedgerStore, agent_approval_required: bool):
+    def __init__(self, store: LedgerStore, actions: ActionService, agent_approval_required: bool):
         self._store = store
+        self._actions = actions
         self._agent_approval_required = agent_approval_required
 
     async def submit(
         self,
         ledger_id: str,
-        operation: Operation,
+        request: SubmitChangeRequest,
         caller: Caller,
         expected_version: str | None,
-        note: str | None,
     ) -> PendingChange:
-        return await asyncio.to_thread(self._submit, ledger_id, operation, caller, expected_version, note)
+        return await asyncio.to_thread(self._submit, ledger_id, request, caller, expected_version)
 
     async def get(self, ledger_id: str, change_id: str) -> PendingChange:
         return await asyncio.to_thread(lambda: self._pending(ledger_id).get(change_id))
@@ -72,14 +75,14 @@ class ChangeService:
     def _submit(
         self,
         ledger_id: str,
-        operation: Operation,
+        request: SubmitChangeRequest,
         caller: Caller,
         expected_version: str | None,
-        note: str | None,
     ) -> PendingChange:
         if expected_version is None:
             raise VersionRequired("submit changes with the ledger version you last saw (If-Match)")
         ledger = self._store.open(ledger_id)
+        operation, source = self._operation_of(ledger_id, request)
         store = PendingStore(ledger.root)
         with ledger.lock:
             auto_approve = caller.actor == "agent" and not self._agent_approval_required
@@ -90,7 +93,8 @@ class ChangeService:
                 base_version=expected_version,
                 status=ChangeStatus.PENDING,
                 caller=caller,
-                note=note,
+                note=request.note,
+                source=source,
                 created_at=_now(),
                 target_fingerprint=_fingerprint(ledger, operation),
             )
@@ -103,6 +107,12 @@ class ChangeService:
                 ledger.apply(operation, expected_version, dry_run=True)
             store.save(change)
             return change
+
+    def _operation_of(self, ledger_id: str, request: SubmitChangeRequest) -> tuple[Operation, ActionRequest | None]:
+        if request.action is None:
+            return request.operation, None
+        action = request.action
+        return self._actions.compile(ledger_id, action.account, action.recipe, action.params), action
 
     def _amend(self, ledger_id: str, change_id: str, operation: Operation) -> PendingChange:
         ledger = self._store.open(ledger_id)

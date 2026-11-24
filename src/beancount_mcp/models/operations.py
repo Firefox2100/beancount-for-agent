@@ -61,6 +61,19 @@ class Reconcile(BaseModel):
     pad_account: AccountName | None = None
 
 
+BatchMember = Annotated[
+    AddTransaction | OpenAccount | CloseAccount | AddDirective | Reconcile,
+    Field(discriminator="kind"),
+]
+
+
+class Batch(BaseModel):
+    """Several additions applied as one atomic change."""
+
+    kind: Literal["batch"] = "batch"
+    operations: list[BatchMember] = Field(min_length=1)
+
+
 Operation = Annotated[
     AddTransaction
     | UpdateTransaction
@@ -70,6 +83,7 @@ Operation = Annotated[
     | AddDirective
     | UpdateDirective
     | DeleteDirective
-    | Reconcile,
+    | Reconcile
+    | Batch,
     Field(discriminator="kind"),
 ]

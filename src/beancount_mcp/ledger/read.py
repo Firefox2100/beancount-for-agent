@@ -193,6 +193,7 @@ def list_accounts(entries: list) -> list[AccountInfo]:
                 open_date=entry.date,
                 currencies=list(entry.currencies or []),
                 booking=entry.booking.name if entry.booking else None,
+                type=entry.meta.get("type"),
             )
         elif isinstance(entry, data.Close) and entry.account in accounts:
             accounts[entry.account].close_date = entry.date

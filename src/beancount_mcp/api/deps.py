@@ -3,8 +3,10 @@ from typing import Annotated, Literal
 from fastapi import Depends, Header, Request
 
 from beancount_mcp.models import Caller
+from beancount_mcp.services.actions import ActionService
 from beancount_mcp.services.changes import ChangeService
 from beancount_mcp.services.ledgers import LedgerService
+from beancount_mcp.services.profiles import ProfileService
 
 
 def get_ledger_service(request: Request) -> LedgerService:
@@ -13,6 +15,14 @@ def get_ledger_service(request: Request) -> LedgerService:
 
 def get_change_service(request: Request) -> ChangeService:
     return request.app.state.change_service
+
+
+def get_action_service(request: Request) -> ActionService:
+    return request.app.state.action_service
+
+
+def get_profile_service(request: Request) -> ProfileService:
+    return request.app.state.profile_service
 
 
 def get_caller(
@@ -25,6 +35,8 @@ def get_caller(
 
 LedgerServiceDep = Annotated[LedgerService, Depends(get_ledger_service)]
 ChangeServiceDep = Annotated[ChangeService, Depends(get_change_service)]
+ActionServiceDep = Annotated[ActionService, Depends(get_action_service)]
+ProfileServiceDep = Annotated[ProfileService, Depends(get_profile_service)]
 CallerDep = Annotated[Caller, Depends(get_caller)]
 
 ExpectedVersion = Annotated[

@@ -6,6 +6,7 @@ from beancount_mcp.models.accounts import (
     ReconcileRequest,
 )
 from beancount_mcp.models.changes import (
+    ActionRequest,
     AmendChangeRequest,
     Caller,
     ChangeStatus,
@@ -35,6 +36,7 @@ from beancount_mcp.models.ledger import (
 )
 from beancount_mcp.models.operations import (
     AddDirective,
+    Batch,
     DeleteDirective,
     UpdateDirective,
     AddTransaction,
@@ -45,6 +47,15 @@ from beancount_mcp.models.operations import (
     Reconcile,
     UpdateTransaction,
 )
-from beancount_mcp.models.transactions import Transaction, TransactionInput, TransactionPage
+from beancount_mcp.models.profile import (
+    AccountProfile,
+    KindInfo,
+    KindName,
+    Pool,
+    Profile,
+    ProfileView,
+    RecipeInfo,
+)
+from beancount_mcp.models.transactions import Posting, Transaction, TransactionInput, TransactionPage
 
 __all__ = [name for name in dir() if not name.startswith("_")]

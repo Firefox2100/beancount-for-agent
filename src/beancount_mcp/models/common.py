@@ -2,7 +2,7 @@ import re
 from decimal import Decimal
 from typing import Annotated
 
-from pydantic import AfterValidator, BaseModel, Field, StringConstraints
+from pydantic import AfterValidator, BaseModel, Field, StringConstraints, model_validator
 
 ACCOUNT_PATTERN = r"^(Assets|Liabilities|Equity|Income|Expenses)(:[A-Z0-9][A-Za-z0-9-]*)+$"
 CURRENCY_PATTERN = r"^([A-Z]|[A-Z][A-Z0-9'._-]{0,22}[A-Z0-9])$"
@@ -27,5 +27,19 @@ FiniteDecimal = Annotated[Decimal, Field(allow_inf_nan=False)]
 
 
 class Amount(BaseModel):
+    """A number and a currency. Also accepted as text: "12.50 USD"."""
+
     number: FiniteDecimal
     currency: CurrencyCode
+
+    @model_validator(mode="before")
+    @classmethod
+    def _from_text(cls, value):
+        if not isinstance(value, str):
+            return value
+        parts = value.replace(",", "").split()
+        if len(parts) == 2 and parts[0][:1].isalpha() and not parts[1][:1].isalpha():
+            parts.reverse()
+        if len(parts) != 2:
+            raise ValueError('expected an amount like "12.50 USD"')
+        return {"number": parts[0], "currency": parts[1]}

@@ -2,9 +2,11 @@ import datetime as dt
 from enum import StrEnum
 from typing import Literal
 
-from pydantic import BaseModel
+from typing import Any
 
-from beancount_mcp.models.common import Text
+from pydantic import BaseModel, model_validator
+
+from beancount_mcp.models.common import AccountName, Text
 from beancount_mcp.models.operations import Operation
 
 
@@ -23,6 +25,12 @@ class Caller(BaseModel):
     session_id: str | None = None
 
 
+class ActionRequest(BaseModel):
+    account: AccountName
+    recipe: str
+    params: dict[str, Any] = {}
+
+
 class PendingChange(BaseModel):
     id: str
     ledger_id: str
@@ -36,11 +44,21 @@ class PendingChange(BaseModel):
     resolution_note: Text | None = None
     result_version: str | None = None
     target_fingerprint: str | None = None
+    source: ActionRequest | None = None
 
 
 class SubmitChangeRequest(BaseModel):
-    operation: Operation
+    """Either a concrete operation or a recipe action to compile into one."""
+
+    operation: Operation | None = None
+    action: ActionRequest | None = None
     note: Text | None = None
+
+    @model_validator(mode="after")
+    def _exactly_one(self):
+        if (self.operation is None) == (self.action is None):
+            raise ValueError("provide exactly one of operation or action")
+        return self
 
 
 class AmendChangeRequest(BaseModel):

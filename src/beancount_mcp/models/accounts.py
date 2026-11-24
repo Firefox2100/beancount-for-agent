@@ -4,6 +4,7 @@ from typing import Annotated
 from pydantic import BaseModel, Field
 
 from beancount_mcp.models.common import AccountName, Amount, CurrencyCode
+from beancount_mcp.models.profile import KindName
 
 BookingMethod = Annotated[str, Field(pattern=r"^(STRICT|STRICT_WITH_SIZE|NONE|AVERAGE|FIFO|LIFO|HIFO)$")]
 
@@ -14,6 +15,9 @@ class AccountInfo(BaseModel):
     close_date: dt.date | None = None
     currencies: list[str] = Field(default_factory=list)
     booking: str | None = None
+    type: str | None = None
+    description: str | None = None
+    recipes: list[str] = Field(default_factory=list)
 
 
 class OpenAccountRequest(BaseModel):
@@ -21,6 +25,7 @@ class OpenAccountRequest(BaseModel):
     date: dt.date
     currencies: list[CurrencyCode] = Field(default_factory=list)
     booking: BookingMethod | None = None
+    type: KindName | None = None
 
 
 class CloseAccountRequest(BaseModel):

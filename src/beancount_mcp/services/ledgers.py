@@ -3,8 +3,10 @@ from datetime import date
 
 from pydantic import BaseModel
 
+from beancount_mcp.ledger.profile import ProfileStore
 from beancount_mcp.ledger.errors import ApprovalRequired, TransactionNotFound
 from beancount_mcp.ledger.store import LedgerStore
+from beancount_mcp.recipes.registry import RecipeRegistry
 from beancount_mcp.models import (
     AccountBalance,
     AccountInfo,
@@ -28,8 +30,14 @@ class WriteResult(BaseModel):
 
 
 class LedgerService:
-    def __init__(self, store: LedgerStore, agent_approval_required: bool = True):
+    def __init__(
+        self,
+        store: LedgerStore,
+        registry: RecipeRegistry | None = None,
+        agent_approval_required: bool = True,
+    ):
         self._store = store
+        self._registry = registry or RecipeRegistry()
         self._agent_approval_required = agent_approval_required
 
     async def list_ledgers(self) -> list[LedgerInfo]:
@@ -42,7 +50,7 @@ class LedgerService:
         return await asyncio.to_thread(lambda: self._store.open(ledger_id).status())
 
     async def list_accounts(self, ledger_id: str) -> list[AccountInfo]:
-        return await asyncio.to_thread(lambda: self._store.open(ledger_id).accounts())
+        return await asyncio.to_thread(self._accounts, ledger_id)
 
     async def balances(self, ledger_id: str, as_of: date | None) -> list[AccountBalance]:
         return await asyncio.to_thread(lambda: self._store.open(ledger_id).balances(as_of))
@@ -112,6 +120,17 @@ class LedgerService:
         if caller.actor == "agent" and self._agent_approval_required:
             raise ApprovalRequired("agent changes must be submitted for approval")
         return await asyncio.to_thread(self._apply, ledger_id, operation, expected_version)
+
+    def _accounts(self, ledger_id: str) -> list[AccountInfo]:
+        ledger = self._store.open(ledger_id)
+        profile = ProfileStore(ledger.root).load()[0]
+        accounts = ledger.accounts()
+        for info in accounts:
+            configured = profile.accounts.get(info.name)
+            info.description = configured.description if configured else None
+            allowed = configured.recipes if configured else None
+            info.recipes = [r.id for r in self._registry.for_kind(info.type, allowed)]
+        return accounts
 
     def _list_ledgers(self) -> list[LedgerInfo]:
         return [self._store.open(ledger_id).info() for ledger_id in self._store.list_ids()]

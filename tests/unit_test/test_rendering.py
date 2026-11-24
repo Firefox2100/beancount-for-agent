@@ -1,4 +1,5 @@
 from datetime import date
+from decimal import Decimal
 
 from beancount import loader
 
@@ -46,3 +47,22 @@ def test_span_covers_indented_lines_and_one_blank():
 def test_span_at_end_of_file():
     lines = ["2026-01-01 * \"x\"\n", "  A  1 USD\n"]
     assert _span(lines, 1) == (0, 2)
+
+
+def test_priced_whole_amounts_still_balance():
+    transaction = TransactionInput.model_validate(
+        {
+            "date": "2026-01-02",
+            "postings": [
+                {
+                    "account": "Assets:A",
+                    "units": {"number": "3", "currency": "GBP"},
+                    "price": {"number": str(Decimal(4) / Decimal(3)), "currency": "USD"},
+                },
+                {"account": "Assets:B", "units": {"number": "-4", "currency": "USD"}},
+            ],
+        }
+    )
+    text = _render_transaction(transaction, "abc")
+    _, errors, _ = loader.load_string("2026-01-01 open Assets:A\n2026-01-01 open Assets:B\n" + text)
+    assert errors == []

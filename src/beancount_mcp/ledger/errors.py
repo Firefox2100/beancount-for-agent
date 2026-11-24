@@ -59,3 +59,11 @@ class ApprovalRequired(LedgerStoreError):
 
 class VersionRequired(LedgerStoreError):
     pass
+
+
+class RecipeNotFound(LedgerStoreError):
+    pass
+
+
+class RecipeError(LedgerStoreError):
+    """The recipe cannot be applied with these parameters to this account."""

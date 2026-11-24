@@ -13,6 +13,7 @@ from beancount_mcp.ledger.read import find_record, find_transaction
 from beancount_mcp.models import (
     AddDirective,
     AddTransaction,
+    Batch,
     BalanceAssertion,
     CloseAccount,
     CommodityDirective,
@@ -61,6 +62,12 @@ def apply_operation(stage: Path, layout: Layout, entries: list, operation: Opera
             return _update_directive(stage, layout, entries, operation)
         case Reconcile():
             return _reconcile(stage, layout, operation)
+        case Batch():
+            touched: dict = {}
+            for member in operation.operations:
+                for key, value in apply_operation(stage, layout, entries, member).items():
+                    touched.setdefault(key, value)
+            return touched
         case DeleteDirective():
             entry = _editable_record(stage, entries, operation.id)
             _remove_span(Path(entry.meta["filename"]), entry.meta["lineno"])
@@ -157,10 +164,11 @@ def _editable_transaction(stage: Path, entries: list, identifier: str) -> data.T
 
 
 def _render_transaction(transaction: TransactionInput, identifier: str) -> str:
+    priced = any(posting.price is not None for posting in transaction.postings)
     postings = [
         data.Posting(
             account=posting.account,
-            units=_amount(posting.units),
+            units=_amount(posting.units, with_cents=priced),
             cost=_cost(posting.cost),
             price=_amount(posting.price),
             flag=None,
@@ -181,8 +189,19 @@ def _render_transaction(transaction: TransactionInput, identifier: str) -> str:
     return printer.format_entry(entry)
 
 
-def _amount(amount) -> BcAmount | None:
-    return None if amount is None else BcAmount(Decimal(amount.number), amount.currency)
+def _amount(amount, with_cents: bool = False) -> BcAmount | None:
+    """Convert to a Beancount amount.
+
+    Beancount infers balancing tolerance from decimal places, and whole numbers
+    give none. A priced posting divides to a repeating unit price, so its
+    transaction must show decimals or the rounding residue is reported as an error.
+    """
+    if amount is None:
+        return None
+    number = Decimal(amount.number)
+    if with_cents and number.as_tuple().exponent >= 0:
+        number = number.quantize(Decimal("0.01"))
+    return BcAmount(number, amount.currency)
 
 
 def _cost(cost) -> data.CostSpec | None:
@@ -194,7 +213,7 @@ def _cost(cost) -> data.CostSpec | None:
 def _render_open(operation: OpenAccount) -> str:
     booking = data.Booking[operation.booking] if operation.booking else None
     return printer.format_entry(
-        data.Open({}, operation.date, operation.account, list(operation.currencies) or None, booking)
+        data.Open({"type": operation.type} if operation.type else {}, operation.date, operation.account, list(operation.currencies) or None, booking)
     )
 
 

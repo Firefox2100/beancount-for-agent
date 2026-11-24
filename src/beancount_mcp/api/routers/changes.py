@@ -31,7 +31,7 @@ async def submit_change(
     caller: CallerDep,
     expected_version: ExpectedVersion = None,
 ) -> PendingChange:
-    return await service.submit(ledger_id, request.operation, caller, expected_version, request.note)
+    return await service.submit(ledger_id, request, caller, expected_version)
 
 
 @router.get("/{change_id}")
