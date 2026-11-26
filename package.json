@@ -1,0 +1,10 @@
+{
+  "name": "beancount-mcp-integrations",
+  "private": true,
+  "description": "Workspace for the harness integrations. The service itself is the Python package at the repository root.",
+  "packageManager": "pnpm@12.3.4",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "test": "pnpm -r --if-present test"
+  }
+}

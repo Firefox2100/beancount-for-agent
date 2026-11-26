@@ -14,6 +14,7 @@ from beancount_mcp.models.changes import (
     ResolveChangeRequest,
     SubmitChangeRequest,
 )
+from beancount_mcp.models.details import AccountDetails, AccountDetailsUpdate
 from beancount_mcp.models.directives import (
     BalanceAssertion,
     CommodityDirective,
@@ -45,6 +46,7 @@ from beancount_mcp.models.operations import (
     OpenAccount,
     Operation,
     Reconcile,
+    SetAccountDetails,
     UpdateTransaction,
 )
 from beancount_mcp.models.profile import (

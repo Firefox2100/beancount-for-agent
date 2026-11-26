@@ -11,9 +11,12 @@ from beancount_mcp.models import (
     CloseAccountRequest,
     OpenAccount,
     OpenAccountRequest,
+    SetAccountDetails,
     Reconcile,
     ReconcileRequest,
 )
+from beancount_mcp.ledger.errors import ApprovalRequired
+from beancount_mcp.models import AccountDetailsUpdate
 from beancount_mcp.models.common import AccountName
 from beancount_mcp.services.ledgers import WriteResult
 
@@ -34,6 +37,22 @@ async def open_account(
     expected_version: ExpectedVersion = None,
 ) -> WriteResult:
     operation = OpenAccount(**request.model_dump())
+    return await service.apply(ledger_id, operation, caller, expected_version)
+
+
+@router.put("/accounts/{account}/details")
+async def set_account_details(
+    ledger_id: str,
+    account: AccountName,
+    request: AccountDetailsUpdate,
+    service: LedgerServiceDep,
+    caller: CallerDep,
+    expected_version: ExpectedVersion = None,
+) -> WriteResult:
+    """Set or clear bank details. Only the user does this, so agents never handle the numbers."""
+    if caller.actor == "agent":
+        raise ApprovalRequired("account details are set by the user")
+    operation = SetAccountDetails(account=account, set=request.set, clear=request.clear)
     return await service.apply(ledger_id, operation, caller, expected_version)
 
 

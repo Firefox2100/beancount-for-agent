@@ -1,0 +1,6 @@
+{
+  "meta": {
+    "title": "Beancount",
+    "description": "Manage Beancount ledgers: native finance tools, a ledger held in the session, and a dock page for the overview and for approving what the agent proposes."
+  }
+}

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="csrf" content="{{ csrf }}">
+<title>{% block title %}Beancount{% endblock %}</title>
+<style>
+:root { --bg:#fafaf8; --fg:#1d1d1b; --muted:#6b6b66; --card:#fff; --line:#dedcd6; --accent:#1f6f54; --accent-fg:#fff; --bad:#a32b2b; --bad-bg:#fbeaea; --ok-bg:#e8f3ee; --mono:ui-monospace,SFMono-Regular,Menlo,monospace; }
+@media (prefers-color-scheme: dark) { :root { --bg:#161715; --fg:#ecebe6; --muted:#9a9990; --card:#1f201d; --line:#34352f; --accent:#4fb08a; --accent-fg:#0d1a14; --bad:#ec8a8a; --bad-bg:#3a1f1f; --ok-bg:#1b2d25; } }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--fg); font:16px/1.5 system-ui,-apple-system,Segoe UI,sans-serif; }
+header { border-bottom:1px solid var(--line); background:var(--card); }
+.bar { max-width:56rem; margin:0 auto; padding:.7rem 1rem; display:flex; gap:1.2rem; align-items:center; flex-wrap:wrap; }
+.bar a { color:var(--fg); text-decoration:none; } .bar a:hover { color:var(--accent); }
+.bar .brand { font-weight:600; margin-right:auto; }
+main { max-width:56rem; margin:0 auto; padding:1.2rem 1rem 3rem; }
+h1 { font-size:1.4rem; margin:.2rem 0 1rem; } h2 { font-size:1.05rem; margin:1.6rem 0 .6rem; }
+a { color:var(--accent); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:.9rem 1rem; margin:0 0 .9rem; }
+.muted { color:var(--muted); } .small { font-size:.85rem; }
+.flash { padding:.6rem .9rem; border-radius:6px; margin:0 0 1rem; background:var(--ok-bg); }
+.flash.error { background:var(--bad-bg); color:var(--bad); }
+table { width:100%; border-collapse:collapse; } th,td { text-align:left; padding:.3rem .5rem .3rem 0; vertical-align:top; }
+th { color:var(--muted); font-weight:500; font-size:.85rem; }
+td.num { text-align:right; font-family:var(--mono); white-space:nowrap; }
+.postings td { padding:.1rem .5rem .1rem 0; font-size:.95rem; } .postings td:first-child { font-family:var(--mono); }
+form.row { display:flex; gap:.5rem; align-items:center; flex-wrap:wrap; margin-top:.7rem; }
+label { display:block; font-size:.85rem; color:var(--muted); margin:.7rem 0 .2rem; }
+input[type=text],input[type=password],input[type=number],input[type=date],select { width:100%; padding:.45rem .55rem; border:1px solid var(--line); border-radius:6px; background:var(--bg); color:var(--fg); font:inherit; }
+.grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(15rem,1fr)); gap:0 1rem; }
+button { font:inherit; padding:.45rem .9rem; border-radius:6px; border:1px solid var(--line); background:var(--card); color:var(--fg); cursor:pointer; }
+button.primary { background:var(--accent); color:var(--accent-fg); border-color:var(--accent); }
+button.link { border:0; background:none; color:var(--muted); padding:0; }
+.tag { font-size:.75rem; padding:.05rem .45rem; border-radius:99px; border:1px solid var(--line); color:var(--muted); }
+.note { width:auto; flex:1 1 12rem; }
+</style>
+</head>
+<body>
+<header><div class="bar">
+  <a class="brand" href="/ui/">Beancount</a>
+  <a href="/ui/">Inbox</a>
+  {% block nav %}{% endblock %}
+  {% if login_enabled %}<form method="post" action="/ui/logout"><input type="hidden" name="csrf" value="{{ csrf }}"><button class="link" type="submit">Sign out</button></form>{% endif %}
+</div></header>
+<main>
+{% if flash %}<div class="flash {{ 'error' if flash_kind == 'error' }}" role="status">{{ flash }}</div>{% endif %}
+{% block body %}{% endblock %}
+</main>
+</body>
+</html>

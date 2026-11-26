@@ -1,6 +1,7 @@
 import os
 from pathlib import Path
 
+from pydantic import SecretStr, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from beancount_mcp.models import Layout
@@ -18,7 +19,14 @@ class Settings(BaseSettings):
     host: str = "127.0.0.1"
     port: int = 8000
     mcp_enabled: bool = False
+    mcp_raw_transactions: bool = False
     agent_approval_required: bool = True
+    auth_token: SecretStr | None = None
+
+    @field_validator("auth_token", mode="after")
+    @classmethod
+    def _blank_means_unset(cls, value: SecretStr | None) -> SecretStr | None:
+        return value if value is not None and value.get_secret_value().strip() else None
 
 
 def load_settings() -> Settings:

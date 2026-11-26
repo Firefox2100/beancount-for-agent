@@ -4,9 +4,11 @@ from fastapi import Depends, Header, Request
 
 from beancount_mcp.models import Caller
 from beancount_mcp.services.actions import ActionService
+from beancount_mcp.services.agent import AgentService
 from beancount_mcp.services.changes import ChangeService
 from beancount_mcp.services.ledgers import LedgerService
 from beancount_mcp.services.profiles import ProfileService
+from beancount_mcp.services.views import ViewService
 
 
 def get_ledger_service(request: Request) -> LedgerService:
@@ -25,6 +27,14 @@ def get_profile_service(request: Request) -> ProfileService:
     return request.app.state.profile_service
 
 
+def get_view_service(request: Request) -> ViewService:
+    return request.app.state.view_service
+
+
+def get_agent_service(request: Request) -> AgentService:
+    return request.app.state.agent_service
+
+
 def get_caller(
     actor: Annotated[Literal["user", "agent"], Header(alias="X-Actor")] = "user",
     client_id: Annotated[str | None, Header(alias="X-Client-Id")] = None,
@@ -37,6 +47,8 @@ LedgerServiceDep = Annotated[LedgerService, Depends(get_ledger_service)]
 ChangeServiceDep = Annotated[ChangeService, Depends(get_change_service)]
 ActionServiceDep = Annotated[ActionService, Depends(get_action_service)]
 ProfileServiceDep = Annotated[ProfileService, Depends(get_profile_service)]
+ViewServiceDep = Annotated[ViewService, Depends(get_view_service)]
+AgentServiceDep = Annotated[AgentService, Depends(get_agent_service)]
 CallerDep = Annotated[Caller, Depends(get_caller)]
 
 ExpectedVersion = Annotated[

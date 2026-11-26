@@ -1,0 +1,1244 @@
+[
+  {
+    "description": "Propose correcting a recorded transaction's date, payee, narration or tags (find its id with search_transactions). Send only what changes, and \"\" for payee to remove it. Amounts and accounts cannot be changed: delete the transaction and record it again.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "narration": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "payee": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tags": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "transaction_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "transaction_id"
+      ],
+      "type": "object"
+    },
+    "name": "amend_transaction",
+    "readOnly": false,
+    "tags": [
+      "propose"
+    ]
+  },
+  {
+    "description": "Propose closing an account.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "account"
+      ],
+      "type": "object"
+    },
+    "name": "close_account",
+    "readOnly": false,
+    "tags": [
+      "admin",
+      "propose"
+    ]
+  },
+  {
+    "description": "Create a new ledger. The id becomes its folder name: lowercase letters, digits, - and _.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "operating_currencies": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "create_ledger",
+    "readOnly": false,
+    "tags": [
+      "admin"
+    ]
+  },
+  {
+    "description": "Propose removing a recorded transaction that was wrong or recorded twice (find its id with search_transactions).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "transaction_id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "transaction_id"
+      ],
+      "type": "object"
+    },
+    "name": "delete_transaction",
+    "readOnly": false,
+    "tags": [
+      "propose"
+    ]
+  },
+  {
+    "description": "Balances per account and currency. `account` keeps that account and its sub-accounts.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "as_of": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    },
+    "name": "get_balances",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
+    "description": "Shared credit limits with used and available credit.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    },
+    "name": "get_credit_pools",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
+    "description": "Accounts with money due soon: amount owed, due date and autopay source.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "within_days": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": 14
+        }
+      },
+      "type": "object"
+    },
+    "name": "get_due",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
+    "description": "Unsettled reimbursement claims, loans, invoices and bills, grouped by link.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    },
+    "name": "get_open_items",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
+    "description": "Account types that can be given when opening an account, with the recipes each one gets.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    },
+    "name": "list_account_types",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
+    "description": "Accounts with their type, currencies, description and the recipe ids they support.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "include_closed": {
+          "default": false,
+          "type": "boolean"
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    },
+    "name": "list_accounts",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
+    "description": "List the ledgers, each with its current version.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {},
+      "type": "object"
+    },
+    "name": "list_ledgers",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
+    "description": "Changes proposed through this connection and whether they were approved.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "anyOf": [
+            {
+              "enum": [
+                "pending",
+                "approved",
+                "rejected",
+                "withdrawn"
+              ],
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": "pending"
+        }
+      },
+      "type": "object"
+    },
+    "name": "list_my_proposals",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
+    "description": "Actions available on an account (card statement, loan repayment, claim, trade and so on), with the parameters each takes.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "account"
+      ],
+      "type": "object"
+    },
+    "name": "list_recipes",
+    "readOnly": true,
+    "tags": [
+      "recipe"
+    ]
+  },
+  {
+    "description": "Propose opening an account such as Assets:Bank:Checking. `type` (see list_account_types) decides which recipes it gets.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "currencies": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "account"
+      ],
+      "type": "object"
+    },
+    "name": "open_account",
+    "readOnly": false,
+    "tags": [
+      "admin",
+      "propose"
+    ]
+  },
+  {
+    "description": "Propose a recipe action on an account. `params` follows the schema from list_recipes. The result shows the exact postings.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "params": {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        "recipe": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "account",
+        "recipe",
+        "params"
+      ],
+      "type": "object"
+    },
+    "name": "perform_recipe",
+    "readOnly": false,
+    "tags": [
+      "propose",
+      "recipe"
+    ]
+  },
+  {
+    "description": "Propose a balance check against a bank statement. With `pad_account`, the difference is booked there (for example an adjustments expense).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "amount": {
+          "anyOf": [
+            {
+              "description": "A number and a currency. Also accepted as text: \"12.50 USD\".",
+              "properties": {
+                "currency": {
+                  "pattern": "^([A-Z]|[A-Z][A-Z0-9'._-]{0,22}[A-Z0-9])$",
+                  "type": "string"
+                },
+                "number": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "number",
+                "currency"
+              ],
+              "type": "object"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "pad_account": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "account",
+        "amount"
+      ],
+      "type": "object"
+    },
+    "name": "reconcile_account",
+    "readOnly": false,
+    "tags": [
+      "propose"
+    ]
+  },
+  {
+    "description": "Propose an expense paid from a bank, cash, wallet or card account. The amount may be in another currency than the account's for accounts that support it.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "description": "A number and a currency. Also accepted as text: \"12.50 USD\".",
+              "properties": {
+                "currency": {
+                  "pattern": "^([A-Z]|[A-Z][A-Z0-9'._-]{0,22}[A-Z0-9])$",
+                  "type": "string"
+                },
+                "number": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "number",
+                "currency"
+              ],
+              "type": "object"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "expense_account": {
+          "type": "string"
+        },
+        "from_account": {
+          "type": "string"
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "narration": {
+          "default": "",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "payee": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "from_account",
+        "expense_account",
+        "amount"
+      ],
+      "type": "object"
+    },
+    "name": "record_expense",
+    "readOnly": false,
+    "tags": [
+      "propose"
+    ]
+  },
+  {
+    "description": "Propose money received into an account from an income account. For pay with deductions use the `salary` recipe.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "description": "A number and a currency. Also accepted as text: \"12.50 USD\".",
+              "properties": {
+                "currency": {
+                  "pattern": "^([A-Z]|[A-Z][A-Z0-9'._-]{0,22}[A-Z0-9])$",
+                  "type": "string"
+                },
+                "number": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "number",
+                "currency"
+              ],
+              "type": "object"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "income_account": {
+          "type": "string"
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "narration": {
+          "default": "",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "payee": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "to_account": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "to_account",
+        "income_account",
+        "amount"
+      ],
+      "type": "object"
+    },
+    "name": "record_income",
+    "readOnly": false,
+    "tags": [
+      "propose"
+    ]
+  },
+  {
+    "description": "Propose moving money between accounts. Across currencies give `received` (what arrived) or `rate` (received currency per unit sent).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "amount": {
+          "anyOf": [
+            {
+              "description": "A number and a currency. Also accepted as text: \"12.50 USD\".",
+              "properties": {
+                "currency": {
+                  "pattern": "^([A-Z]|[A-Z][A-Z0-9'._-]{0,22}[A-Z0-9])$",
+                  "type": "string"
+                },
+                "number": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "number",
+                "currency"
+              ],
+              "type": "object"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            }
+          ]
+        },
+        "date": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "from_account": {
+          "type": "string"
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "narration": {
+          "default": "",
+          "type": "string"
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "rate": {
+          "anyOf": [
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "received": {
+          "anyOf": [
+            {
+              "description": "A number and a currency. Also accepted as text: \"12.50 USD\".",
+              "properties": {
+                "currency": {
+                  "pattern": "^([A-Z]|[A-Z][A-Z0-9'._-]{0,22}[A-Z0-9])$",
+                  "type": "string"
+                },
+                "number": {
+                  "anyOf": [
+                    {
+                      "type": "number"
+                    },
+                    {
+                      "type": "string"
+                    }
+                  ]
+                }
+              },
+              "required": [
+                "number",
+                "currency"
+              ],
+              "type": "object"
+            },
+            {
+              "type": "number"
+            },
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "to_account": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "from_account",
+        "to_account",
+        "amount"
+      ],
+      "type": "object"
+    },
+    "name": "record_transfer",
+    "readOnly": false,
+    "tags": [
+      "propose"
+    ]
+  },
+  {
+    "description": "Find transactions by text (payee, narration), account, date range or tag. Newest last.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "end": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "limit": {
+          "default": 20,
+          "type": "integer"
+        },
+        "start": {
+          "anyOf": [
+            {
+              "format": "date",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "tag": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "text": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    },
+    "name": "search_transactions",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
+    "description": "Withdraw a pending proposal that is no longer wanted.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "change_id": {
+          "type": "string"
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "change_id"
+      ],
+      "type": "object"
+    },
+    "name": "withdraw_proposal",
+    "readOnly": false,
+    "tags": [
+      "propose"
+    ]
+  }
+]

@@ -229,3 +229,9 @@ src/beancount_mcp/_version.py
 .env
 /data/
 AGENTS.md
+
+# Node (integrations workspace)
+node_modules/
+
+# DSH dev instance state
+.dev/

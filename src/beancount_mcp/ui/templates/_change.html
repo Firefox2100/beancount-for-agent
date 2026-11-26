@@ -1,0 +1,11 @@
+{% macro blocks(items) %}
+{% for block in items %}
+  <div style="margin:.5rem 0">
+    <strong>{{ block.title }}</strong>
+    {% if block.postings %}
+    <table class="postings">{% for account, amount in block.postings %}<tr><td>{{ account }}</td><td class="num">{{ amount }}</td></tr>{% endfor %}</table>
+    {% endif %}
+    {% for line in block.lines %}<div class="muted small">{{ line }}</div>{% endfor %}
+  </div>
+{% endfor %}
+{% endmacro %}

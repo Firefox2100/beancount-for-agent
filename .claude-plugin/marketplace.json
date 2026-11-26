@@ -1,0 +1,11 @@
+{
+  "name": "beancount-mcp",
+  "owner": { "name": "beancount-mcp" },
+  "plugins": [
+    {
+      "name": "beancount",
+      "source": "./integrations/claude-code",
+      "description": "Record and review finances in Beancount through the beancount-mcp service."
+    }
+  ]
+}

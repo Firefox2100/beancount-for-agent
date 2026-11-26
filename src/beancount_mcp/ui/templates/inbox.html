@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% from "_change.html" import blocks %}
+{% block title %}Inbox · Beancount{% endblock %}
+{% block body %}
+<h1>Waiting for your approval{% if total %} <span class="tag">{{ total }}</span>{% endif %}</h1>
+{% if not groups %}<p class="muted">There are no ledgers yet.</p>{% endif %}
+{% for group in groups %}
+  <h2>{{ group.id }}
+    <span class="small"><a href="/ui/ledgers/{{ group.id }}/accounts">accounts</a> · <a href="/ui/ledgers/{{ group.id }}/pools">credit pools</a> · <a href="/ui/ledgers/{{ group.id }}/history">history</a></span>
+  </h2>
+  {% for item in group.changes %}
+    {% set c = item.change %}
+    <div class="card">
+      <div class="muted small">{{ c.id }} · from {{ c.caller.actor }}{% if c.caller.client_id %}/{{ c.caller.client_id }}{% endif %} · {{ c.created_at.strftime("%Y-%m-%d %H:%M") }}</div>
+      {% if c.note %}<div>“{{ c.note }}”</div>{% endif %}
+      {{ blocks(item.blocks) }}
+      <form class="row" method="post">
+        <input type="hidden" name="csrf" value="{{ csrf }}">
+        <input class="note" type="text" name="note" placeholder="Note (optional)">
+        <button class="primary" type="submit" formaction="/ui/ledgers/{{ group.id }}/changes/{{ c.id }}/approve">Approve</button>
+        <button type="submit" formaction="/ui/ledgers/{{ group.id }}/changes/{{ c.id }}/reject">Reject</button>
+      </form>
+    </div>
+  {% else %}
+    <p class="muted">Nothing waiting.</p>
+  {% endfor %}
+{% endfor %}
+{% endblock %}

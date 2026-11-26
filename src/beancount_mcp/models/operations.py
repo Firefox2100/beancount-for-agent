@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field
 
 from beancount_mcp.models.accounts import OpenAccountRequest
 from beancount_mcp.models.common import AccountName, Amount
+from beancount_mcp.models.details import AccountDetails, DetailName
 from beancount_mcp.models.directives import Directive
 from beancount_mcp.models.transactions import TransactionInput
 
@@ -27,6 +28,13 @@ class DeleteTransaction(BaseModel):
 
 class OpenAccount(OpenAccountRequest):
     kind: Literal["open_account"] = "open_account"
+
+
+class SetAccountDetails(BaseModel):
+    kind: Literal["set_account_details"] = "set_account_details"
+    account: AccountName
+    set: AccountDetails = Field(default_factory=AccountDetails)
+    clear: list[DetailName] = Field(default_factory=list)
 
 
 class CloseAccount(BaseModel):
@@ -80,6 +88,7 @@ Operation = Annotated[
     | DeleteTransaction
     | OpenAccount
     | CloseAccount
+    | SetAccountDetails
     | AddDirective
     | UpdateDirective
     | DeleteDirective

@@ -1,0 +1,15 @@
+{
+  "name": "@beancount-mcp/client",
+  "version": "0.0.0",
+  "description": "Client for the beancount-mcp REST API, used by harness plugins to review and resolve agent proposals.",
+  "type": "module",
+  "license": "MIT",
+  "exports": {
+    ".": "./src/index.js"
+  },
+  "files": ["src"],
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  },
+  "engines": { "node": ">=20" }
+}

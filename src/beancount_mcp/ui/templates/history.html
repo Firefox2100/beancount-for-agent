@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+{% from "_change.html" import blocks %}
+{% block title %}History · Beancount{% endblock %}
+{% block body %}
+<h1>History of {{ ledger }}</h1>
+{% for item in items %}{% set c = item.change %}
+  <div class="card">
+    <div class="small"><span class="tag">{{ c.status.value }}</span> <span class="muted">{{ c.id }} · {{ (c.resolved_at or c.created_at).strftime("%Y-%m-%d %H:%M") }}</span></div>
+    {% if c.resolution_note %}<div class="muted small">“{{ c.resolution_note }}”</div>{% endif %}
+    {{ blocks(item.blocks) }}
+  </div>
+{% else %}<p class="muted">Nothing has been resolved yet.</p>{% endfor %}
+{% endblock %}

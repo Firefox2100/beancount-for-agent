@@ -1,0 +1,18 @@
+packages:
+  - integrations/*
+
+overrides:
+  '@deepseek-ai/dsh': 0.2.2-rc.1
+  '@deepseek-ai/cordis': 4.1.0
+  '@deepseek-ai/schemastery': 3.19.0
+  '@deepseek-ai/cordis-plugin-loader': 1.1.0
+
+# Only types and library code from DSH are consumed here; none of its native install scripts are needed.
+allowBuilds:
+  '@deepseek-ai/dsh-subprocess-local': false
+  '@google/genai': false
+  '@swc/core': true
+  core-js: true
+  koffi: false
+  node-pty: false
+  protobufjs: false

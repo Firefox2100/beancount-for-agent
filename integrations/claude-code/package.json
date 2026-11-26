@@ -1,0 +1,10 @@
+{
+  "name": "@beancount-mcp/claude-code",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Claude Code plugin: MCP connection, skill, guard hook and user-only review commands. Shell and JSON, no runtime dependencies.",
+  "type": "module",
+  "scripts": {
+    "test": "node --test \"test/*.test.js\""
+  }
+}

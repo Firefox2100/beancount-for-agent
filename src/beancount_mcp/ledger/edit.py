@@ -10,6 +10,7 @@ from beancount.parser import printer
 from beancount_mcp.ledger.errors import NotEditable, TransactionNotFound
 from beancount_mcp.ledger.layout import accounts_file, transaction_file
 from beancount_mcp.ledger.read import find_record, find_transaction
+from beancount_mcp.models.details import meta_key, to_meta
 from beancount_mcp.models import (
     AddDirective,
     AddTransaction,
@@ -28,6 +29,7 @@ from beancount_mcp.models import (
     PadDirective,
     PriceDirective,
     Reconcile,
+    SetAccountDetails,
     TransactionInput,
     UpdateDirective,
     UpdateTransaction,
@@ -51,6 +53,8 @@ def apply_operation(stage: Path, layout: Layout, entries: list, operation: Opera
         case OpenAccount():
             _append(stage / accounts_file(layout), _render_open(operation))
             return {"account": operation.account}
+        case SetAccountDetails():
+            return _set_details(stage, entries, operation)
         case CloseAccount():
             _append(stage / accounts_file(layout), _render_close(operation))
             return {"account": operation.account}
@@ -72,6 +76,19 @@ def apply_operation(stage: Path, layout: Layout, entries: list, operation: Opera
             entry = _editable_record(stage, entries, operation.id)
             _remove_span(Path(entry.meta["filename"]), entry.meta["lineno"])
             return {}
+
+
+def _set_details(stage: Path, entries: list, operation: SetAccountDetails) -> dict:
+    entry = next((e for e in entries if isinstance(e, data.Open) and e.account == operation.account), None)
+    if entry is None:
+        raise TransactionNotFound(operation.account)
+    _require_in_stage(stage, entry, operation.account)
+    cleared = {meta_key(name) for name in operation.clear}
+    meta = {k: v for k, v in entry.meta.items() if k not in ("filename", "lineno") and k not in cleared}
+    meta.update(to_meta(operation.set))
+    text = printer.format_entry(data.Open(meta, entry.date, entry.account, entry.currencies, entry.booking))
+    _replace_span(Path(entry.meta["filename"]), entry.meta["lineno"], text)
+    return {"account": operation.account}
 
 
 def _update_transaction(stage: Path, layout: Layout, entries: list, operation: UpdateTransaction) -> dict:
@@ -212,8 +229,11 @@ def _cost(cost) -> data.CostSpec | None:
 
 def _render_open(operation: OpenAccount) -> str:
     booking = data.Booking[operation.booking] if operation.booking else None
+    meta = {"type": operation.type} if operation.type else {}
+    if operation.details is not None:
+        meta.update(to_meta(operation.details))
     return printer.format_entry(
-        data.Open({"type": operation.type} if operation.type else {}, operation.date, operation.account, list(operation.currencies) or None, booking)
+        data.Open(meta, operation.date, operation.account, list(operation.currencies) or None, booking)
     )
 
 

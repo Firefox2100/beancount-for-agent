@@ -21,6 +21,7 @@ from beancount_mcp.models import (
     Transaction,
 )
 from beancount_mcp.models.common import Amount
+from beancount_mcp.models.details import from_meta
 from beancount_mcp.models.transactions import Cost, Posting
 
 HIDDEN_META = {"filename", "lineno", "id"}
@@ -194,6 +195,7 @@ def list_accounts(entries: list) -> list[AccountInfo]:
                 currencies=list(entry.currencies or []),
                 booking=entry.booking.name if entry.booking else None,
                 type=entry.meta.get("type"),
+                details=from_meta(entry.meta),
             )
         elif isinstance(entry, data.Close) and entry.account in accounts:
             accounts[entry.account].close_date = entry.date

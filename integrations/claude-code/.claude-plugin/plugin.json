@@ -1,0 +1,19 @@
+{
+  "name": "beancount",
+  "version": "0.0.0",
+  "description": "Record and review finances in Beancount through the beancount-mcp service: MCP tools, a skill, a ledger-file guard and user-only review commands.",
+  "license": "MIT",
+  "userConfig": {
+    "url": {
+      "type": "string",
+      "title": "Service URL",
+      "description": "Where beancount-mcp listens, for example http://127.0.0.1:8000"
+    },
+    "api_token": {
+      "type": "string",
+      "title": "Service token",
+      "description": "The service's BEANCOUNT_MCP_AUTH_TOKEN. Leave empty when it has none.",
+      "sensitive": true
+    }
+  }
+}
