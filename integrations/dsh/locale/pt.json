@@ -1,6 +1,7 @@
 {
   "meta": {
     "title": "Beancount",
-    "description": "Gerir livros do Beancount: ferramentas financeiras nativas, um livro mantido na sessão e uma página no painel lateral para a visão geral e para aprovar o que o assistente propõe."
+    "description": "Gerir livros do Beancount: ferramentas financeiras nativas, um livro mantido na sessão e uma página no painel lateral para a visão geral e para aprovar o que o assistente propõe.",
+    "detail": "docs/DETAIL.md"
   }
 }

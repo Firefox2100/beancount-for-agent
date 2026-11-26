@@ -1,6 +1,7 @@
 {
   "meta": {
     "title": "Beancount",
-    "description": "管理 Beancount 账本：原生财务工具、保存在会话中的账本，以及用于查看总览和批准助手提案的侧栏页面。"
+    "description": "管理 Beancount 账本：原生财务工具、保存在会话中的账本，以及用于查看总览和批准助手提案的侧栏页面。",
+    "detail": "docs/DETAIL.zh.md"
   }
 }

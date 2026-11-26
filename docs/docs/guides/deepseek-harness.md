@@ -5,7 +5,7 @@ title: DeepSeek Harness
 The plugin in `integrations/dsh` (`dsh-beancount`) is the fully native integration. It registers **native tools** that call the service's [agent API](../reference/agent-api.md) directly, so there is no MCP server to configure. DeepSeek Harness (DSH) plugins act as a client of their own, so this integration can hold the active ledger in the session, hide tools until you ask for them, and put approvals inside the harness.
 
 :::caution DSH is a public beta
-It breaks between patch releases. The plugin accepts `>=0.2.2-rc.1 <0.2.3` and is developed against `0.2.2-rc.1`. A range says what it *installs on*; it is not a promise that it was tested there. The tested releases are listed in `integrations/dsh/scripts/dsh-compat.mjs`.
+It breaks between patch releases. The plugin accepts `>=0.2.2-rc.1 <0.2.3-0` and is developed against `0.2.2-rc.1`. The upper bound is the lowest pre-release of 0.2.3, so the range stops before the next patch line rather than admitting its alphas. A range says what it *installs on*; it is not a promise that it was tested there. The tested releases are listed in `integrations/dsh/scripts/dsh-compat.mjs`.
 :::
 
 ## Install
@@ -65,6 +65,10 @@ A pre-call policy refuses shell and file tools whose arguments name ledger files
 ## Skill
 
 The bundled `finance` skill explains how the books are modelled, for models that do not know Beancount: accounts and double entry, account types, currencies, open items, balance checks, and when to ask you rather than guess. It also tells the model never to ask for full card numbers.
+
+## Languages
+
+The dock page and the settings tab ship in all eight languages DSH offers — German, English, Spanish, French, Japanese, Portuguese, Russian and Chinese — and follow the harness's locale preference. The plugin's own entry in the plugin list is translated too, and has a preview image: DSH shows `docs/DETAIL.md` when it exists and falls back to `README.md` when it does not.
 
 ## Using a local model
 
