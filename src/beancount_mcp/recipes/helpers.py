@@ -104,7 +104,7 @@ class Split(BaseModel):
 
 def auto_link(prefix: str, *parts: object) -> str:
     """A stable link name, so recipes that open an item need no identifier from the caller."""
-    digest = hashlib.sha1("|".join(map(str, parts)).encode()).hexdigest()[:6]
+    digest = hashlib.sha256("|".join(map(str, parts)).encode()).hexdigest()[:6]
     return f"{prefix}-{digest}"
 
 

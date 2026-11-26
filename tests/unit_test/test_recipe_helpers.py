@@ -53,5 +53,5 @@ def test_same_currency_must_match():
 
 
 def test_auto_link_is_stable_and_distinct():
-    assert auto_link("claim", "a", 1) == "claim-469f94"
+    assert auto_link("claim", "a", 1) == "claim-df4504"
     assert auto_link("claim", "a", 1) != auto_link("claim", "a", 2)

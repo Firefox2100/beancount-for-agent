@@ -36,7 +36,7 @@ RECORD_TYPES = (data.Balance, data.Pad, data.Price, data.Commodity, data.Note, d
 
 
 def entry_fingerprint(entry) -> str:
-    return hashlib.sha1(printer.format_entry(entry).encode()).hexdigest()
+    return hashlib.sha256(printer.format_entry(entry).encode()).hexdigest()
 
 
 def transaction_id(entry) -> str:

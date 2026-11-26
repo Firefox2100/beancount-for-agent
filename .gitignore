@@ -228,6 +228,7 @@ src/beancount_mcp/_version.py
 # local config and data
 .env
 /data/
+PRODUCT.md
 AGENTS.md
 
 # Node (integrations workspace)
@@ -235,3 +236,6 @@ node_modules/
 
 # DSH dev instance state
 .dev/
+
+# Docusaurus
+.docusaurus/
