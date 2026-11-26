@@ -9,7 +9,7 @@ const json = (path) => JSON.parse(readFileSync(join(root, path), "utf8"));
 const tools = json("../contract/mcp-tools.json");
 
 const guard = (tool_input, env = {}, tool_name = "Bash") =>
-  run(`${root}/hooks/guard.sh`, [], { env, input: JSON.stringify({ hook_event_name: "PreToolUse", tool_name, tool_input }) });
+  run(`${root}/hooks/guard.mjs`, [], { env, input: JSON.stringify({ hook_event_name: "PreToolUse", tool_name, tool_input }) });
 
 test("manifest, MCP and hook files are valid and agree", () => {
   assert.equal(json(".claude-plugin/plugin.json").name, "beancount");
@@ -41,12 +41,34 @@ test("review commands are user-only and the script is not on the agent's PATH", 
     assert.match(readFileSync(join(root, `skills/${name}/SKILL.md`), "utf8"), /disable-model-invocation: true/);
   }
   assert.throws(() => statSync(join(root, "bin")), "a bin/ folder would put the review script on the agent's PATH");
-  assert.ok(readdirSync(join(root, "scripts")).includes("review"));
+  assert.ok(readdirSync(join(root, "scripts")).includes("review.mjs"));
 });
 
 test("integrations never import the Python package", () => {
   const skill = readFileSync(join(root, "skills/beancount/SKILL.md"), "utf8");
   assert.doesNotMatch(skill, /beancount_mcp\./);
+});
+
+test("hooks and commands run Node, never a shell script", () => {
+  // Windows runs a hook's command through cmd.exe, which cannot execute a .sh file; `node "…"` works everywhere.
+  for (const [event, entries] of Object.entries(json("hooks/hooks.json").hooks)) {
+    for (const { command } of entries.flatMap((entry) => entry.hooks)) {
+      assert.match(command, /^node "\$\{CLAUDE_PLUGIN_ROOT\}\/[^"]+\.mjs"$/, `${event}: ${command}`);
+    }
+  }
+  assert.deepEqual(readdirSync(join(root, "hooks")).filter((name) => name.endsWith(".sh")), []);
+  assert.deepEqual(
+    readdirSync(join(root, "scripts")).filter((name) => !name.endsWith(".mjs")),
+    [],
+    "a shell script here would not run on Windows",
+  );
+  for (const name of readdirSync(join(root, "skills"))) {
+    const skill = readFileSync(join(root, `skills/${name}/SKILL.md`), "utf8");
+    for (const command of skill.matchAll(/^(node .*)$/gm).map((match) => match[1])) {
+      assert.match(command, /^node "\$\{CLAUDE_PLUGIN_ROOT\}\/scripts\/[^"]+\.mjs" /, `${name}: ${command}`);
+    }
+    assert.doesNotMatch(skill, /^"\$\{CLAUDE_PLUGIN_ROOT\}\/scripts\/review /m);
+  }
 });
 
 for (const [label, input] of [
@@ -92,7 +114,7 @@ test("briefing reports pending proposals and bills due, with the plugin's token"
     "GET /ledgers/main/changes": { body: [{ id: "c1" }, { id: "c2" }] },
     "GET /ledgers/main/due": { body: [{ account: "Liabilities:Visa", due_date: "2026-03-20", owed: { USD: "120.00" } }] },
   });
-  const result = await run(`${root}/hooks/briefing.sh`, [], {
+  const result = await run(`${root}/hooks/briefing.mjs`, [], {
     env: { CLAUDE_PLUGIN_OPTION_URL: service.url, CLAUDE_PLUGIN_OPTION_API_TOKEN: "t0k" },
     input: "{}",
   });
@@ -105,7 +127,7 @@ test("briefing reports pending proposals and bills due, with the plugin's token"
 });
 
 test("briefing fails open when the service is down", async () => {
-  const result = await run(`${root}/hooks/briefing.sh`, [], { env: { BEANCOUNT_MCP_URL: "http://127.0.0.1:1" }, input: "{}" });
+  const result = await run(`${root}/hooks/briefing.mjs`, [], { env: { BEANCOUNT_MCP_URL: "http://127.0.0.1:1" }, input: "{}" });
   assert.equal(result.code, 0);
   assert.equal(result.stdout, "");
 });

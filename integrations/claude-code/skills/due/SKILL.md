@@ -5,7 +5,7 @@ disable-model-invocation: true
 ---
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}"/scripts/review due $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/scripts/review.mjs" due $ARGUMENTS
 ```
 
 Show the result above as it is.

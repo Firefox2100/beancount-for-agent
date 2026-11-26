@@ -12,7 +12,7 @@ MCP is the universal, stateless surface: the service holds no per-session state 
 | --- | --- |
 | `contract/` | The generated `openapi.json` and `mcp-tools.json`. Not a package. |
 | `client` | `@beancount-mcp/client`, a dependency-free ESM client for the REST API, with a formatter for reviewing a change. Plain JavaScript with JSDoc. |
-| `claude-code` | The Claude Code plugin. Shell and JSON. |
+| `claude-code` | The Claude Code plugin. Node scripts and JSON. |
 | `dsh` | The DeepSeek Harness plugin (`dsh-beancount`). TypeScript. |
 
 ## The contract

@@ -2,7 +2,7 @@
 title: Claude Code
 ---
 
-The plugin in `integrations/claude-code` gives Claude Code the MCP connection, a skill that explains how the books are modelled, a guard hook, a session briefing, and **user-only** commands to review proposals. It is shell and JSON: it needs `curl` and `jq` and no Node.
+The plugin in `integrations/claude-code` gives Claude Code the MCP connection, a skill that explains how the books are modelled, a guard hook, a session briefing, and **user-only** commands to review proposals. It is Node scripts and JSON: it needs Node 18 or newer and nothing else — no `curl`, no `jq` — on macOS, Linux and Windows alike.
 
 ## Install
 
@@ -38,8 +38,8 @@ Restart Claude Code, or run `/reload-plugins`, and check `/mcp` for `beancount` 
 
 - `.mcp.json` connects to `<url>/mcp` with the token. The token reaches only the MCP connection and the plugin's hooks, not the agent's shell.
 - The `beancount` skill explains how to record and look up finances and how the books are modelled: accounts, double entry, account types, currencies, open items and balance checks. It tells the model that every write is a proposal and that it cannot approve one.
-- `hooks/guard.sh` runs before tools. It refuses `Bash`, `Read`, `Write`, `Edit`, `Glob` and `Grep` calls that touch ledger files, the sidecar, the token or service settings. For shell commands it checks the whole command. For file tools it checks only the target path, never the text being written, so source code may still mention a ledger file. Set `BEANCOUNT_MCP_GUARD_PATHS` (colon separated) in Claude Code's environment to protect more paths, such as the data folder. Without `jq`, the guard cannot read its input and lets the call through.
-- `hooks/briefing.sh` runs at session start. It tells the model how many proposals are waiting and what is due within a week. If the service is down, the session starts without the briefing.
+- `hooks/guard.mjs` runs before tools. It refuses `Bash`, `Read`, `Write`, `Edit`, `Glob` and `Grep` calls that touch ledger files, the sidecar, the token or service settings. For shell commands it checks the whole command. For file tools it checks only the target path, never the text being written, so source code may still mention a ledger file. Set `BEANCOUNT_MCP_GUARD_PATHS` in Claude Code's environment to protect more paths, such as the data folder: separate them with `:` on macOS and Linux, `;` on Windows. Without readable input the guard lets the call through.
+- `hooks/briefing.mjs` runs at session start. It tells the model how many proposals are waiting and what is due within a week. If the service is down, the session starts without the briefing.
 
 ## Reviewing proposals
 
@@ -52,7 +52,7 @@ Four commands exist only for you; the model cannot invoke them:
 | `/beancount:reject LEDGER ID [REASON]` | Rejects one, with an optional reason. |
 | `/beancount:due` | Shows statements and bills due in the next two weeks. |
 
-They run `scripts/review` inside the plugin, which calls the REST API as you. The script is deliberately not in the plugin's `bin/` folder, because Claude Code puts a plugin's `bin/` on the agent's `PATH`. You can also use the [web interface](web-interface.md) instead.
+They run `scripts/review.mjs` inside the plugin, which calls the REST API as you. The script is deliberately not in the plugin's `bin/` folder, because Claude Code puts a plugin's `bin/` on the agent's `PATH`. You can also use the [web interface](web-interface.md) instead.
 
 ## Bank details from a terminal
 
@@ -61,10 +61,10 @@ Anything you type in the chat is seen by the agent, so bank details are set outs
 ```bash
 export BEANCOUNT_MCP_URL=http://127.0.0.1:8421
 export BEANCOUNT_MCP_TOKEN_FILE=~/finance/service/.env      # or export the token itself
-S=<repository>/integrations/claude-code/scripts/review
-$S details personal Assets:Barclays:Current bank_name=Barclays sort_code="20 12 34"
-$S details personal Assets:Barclays:Current          # show everything, in full
-$S details personal Assets:Barclays:Current -iban    # clear a field
+S=<repository>/integrations/claude-code/scripts/review.mjs
+node "$S" details personal Assets:Barclays:Current bank_name=Barclays sort_code="20 12 34"
+node "$S" details personal Assets:Barclays:Current          # show everything, in full
+node "$S" details personal Assets:Barclays:Current -iban    # clear a field
 ```
 
 The token file may hold the bare token or the service's own env file; the script reads `BEANCOUNT_MCP_AUTH_TOKEN=` from it.
@@ -72,4 +72,5 @@ The token file may hold the bare token or the service's own env file; the script
 ## Notes
 
 - The plugin is read from the repository folder, so edits there apply at the next session start or `/reload-plugins`.
+- Hooks and commands are shell strings, and Windows runs them through `cmd.exe`: each one here starts with `node "…"`, which `cmd.exe`, PowerShell, Git Bash and a POSIX shell all run. A bare `.sh` script would not run on Windows at all.
 - Tool names and schemas are a contract the plugin depends on. See [Development](../development/integrations.md).

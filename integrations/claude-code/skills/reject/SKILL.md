@@ -6,7 +6,7 @@ argument-hint: LEDGER ID [REASON]
 ---
 
 ```!
-"${CLAUDE_PLUGIN_ROOT}"/scripts/review reject $ARGUMENTS
+node "${CLAUDE_PLUGIN_ROOT}/scripts/review.mjs" reject $ARGUMENTS
 ```
 
 Report the result above in one line.

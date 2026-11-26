@@ -25,7 +25,7 @@ const change = {
 };
 
 const review = (service, args, env = {}) =>
-  run(`${root}/scripts/review`, args, { env: { BEANCOUNT_MCP_URL: service.url, ...env } });
+  run(`${root}/scripts/review.mjs`, args, { env: { BEANCOUNT_MCP_URL: service.url, ...env } });
 
 test("pending lists proposals with their postings and sends the token", async () => {
   const service = await stubService({

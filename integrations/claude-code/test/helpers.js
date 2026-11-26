@@ -27,14 +27,25 @@ export async function stubService(routes) {
   };
 }
 
-/** Run a command, resolving with its exit code and output. */
-export function run(command, args, { env = {}, input = "" } = {}) {
+/** The test's environment: the platform's own, without the finance settings and with no token file to find. */
+function environment(env) {
+  const kept = Object.entries(process.env).filter(([key]) => !/^(BEANCOUNT_MCP_|CLAUDE_PLUGIN_)/.test(key));
+  return Object.fromEntries(kept.concat([["HOME", "/nonexistent"], ["USERPROFILE", "/nonexistent"]], Object.entries(env)));
+}
+
+/**
+ * Run one of the plugin's scripts with Node, resolving with its exit code and output.
+ * A failed spawn is an answer too: without the `error` listener a missing interpreter would leave the
+ * promise pending for ever instead of failing the test.
+ */
+export function run(script, args = [], { env = {}, input = "" } = {}) {
   return new Promise((resolve) => {
-    const child = spawn(command, args, { env: { PATH: process.env.PATH, HOME: "/nonexistent", ...env } });
+    const child = spawn(process.execPath, [script, ...args], { env: environment(env) });
     let stdout = "";
     let stderr = "";
     child.stdout.on("data", (chunk) => (stdout += chunk));
     child.stderr.on("data", (chunk) => (stderr += chunk));
+    child.on("error", (error) => resolve({ code: 1, stdout, stderr: `${stderr}${error.message}` }));
     child.on("close", (code) => resolve({ code, stdout, stderr }));
     child.stdin.end(input);
   });
