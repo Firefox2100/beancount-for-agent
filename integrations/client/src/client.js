@@ -25,7 +25,8 @@ export class ApiError extends Error {
  */
 export function createClient(config) {
   const doFetch = config.fetch ?? fetch;
-  const base = config.baseUrl.replace(/\/+$/, "");
+  let base = config.baseUrl;
+  while (base.endsWith("/")) base = base.slice(0, -1);
   const headers = {
     accept: "application/json",
     "x-actor": config.actor ?? "user",

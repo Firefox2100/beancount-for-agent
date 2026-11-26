@@ -19,7 +19,7 @@ case "$tool" in
   Glob) text=$(jq -r '[.tool_input.pattern, .tool_input.path] | map(strings) | join("\n")' <<<"$input") ;;
   *) text=$(jq -r '[.tool_input.file_path, .tool_input.path, .tool_input.notebook_path] | map(strings) | join("\n")' <<<"$input") ;;
 esac
-[ -n "$text" ] || exit 0
+[[ -n "$text" ]] || exit 0
 
 # Pieces are joined from adjacent quotes so this file never contains what it looks for.
 insensitive='\.''beancount([^[:alnum:]_]|$)|\.''sidecar|beancount-mcp/tok''en|plugins/data/beanc''ount'
@@ -30,9 +30,9 @@ grep -Eq "$sensitive" <<<"$text" && hit=1
 guard_var='BEANCOUNT''_MCP_GUARD_PATHS'
 IFS=: read -ra extra <<<"${!guard_var:-}"
 for path in "${extra[@]}"; do
-  [ -n "$path" ] && grep -Fq -- "$path" <<<"$text" && hit=1
+  [[ -n "$path" ]] && grep -Fq -- "$path" <<<"$text" && hit=1
 done
-[ "$hit" = 0 ] && exit 0
+[[ "$hit" = 0 ]] && exit 0
 
 jq -n '{hookSpecificOutput: {hookEventName: "PreToolUse", permissionDecision: "deny",
   permissionDecisionReason: "Ledger files and finance service settings are not available to file or shell tools. Use the beancount tools instead."}}'

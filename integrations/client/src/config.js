@@ -12,7 +12,9 @@
  * @returns {ClientConfig}
  */
 export function configFromEnv(env = process.env) {
-  const baseUrl = (env.BEANCOUNT_MCP_URL || "http://127.0.0.1:8000").replace(/\/+$/, "");
+  const configuredUrl = env.BEANCOUNT_MCP_URL || "http://127.0.0.1:8000";
+  let baseUrl = configuredUrl;
+  while (baseUrl.endsWith("/")) baseUrl = baseUrl.slice(0, -1);
   const token = (env.BEANCOUNT_MCP_AUTH_TOKEN || "").trim();
   return token ? { baseUrl, token } : { baseUrl };
 }

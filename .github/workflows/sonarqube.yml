@@ -1,0 +1,61 @@
+name: SonarQube
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+
+jobs:
+  sonarqube:
+    name: Test and analyze
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4.3.1
+        with:
+          fetch-depth: 0
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@1db35dd8eee11c5894872e0b383ae6c406cf738d # v10.4.0
+        with:
+          enable-cache: true
+
+      - name: Set up Python
+        run: uv python install 3.12
+
+      - name: Install Python dependencies
+        run: uv sync --frozen --dev
+
+      - name: Run Python tests with coverage
+        run: uv run pytest --cov=beancount_mcp --cov-report=term-missing --cov-report=xml:coverage.xml
+
+      - name: Set up Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: 22
+          package-manager-cache: false
+
+      - name: Enable pnpm
+        run: corepack enable pnpm
+
+      - name: Install integration dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Test integrations
+        run: pnpm test
+
+      - name: Cache SonarQube packages
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: ~/.sonar/cache
+          key: ${{ runner.os }}-sonar
+          restore-keys: ${{ runner.os }}-sonar
+
+      - name: SonarQube scan
+        uses: SonarSource/sonarqube-scan-action@70bad232163b09d998ea0707ee80c0ec80798c16 # v8.5.1
+        env:
+          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}

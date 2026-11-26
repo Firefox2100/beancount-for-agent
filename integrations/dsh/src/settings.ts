@@ -30,8 +30,10 @@ export interface Accessors {
 }
 
 export function settingsOf(config: Accessors): Settings {
+  let baseUrl = config.baseUrl.get()
+  while (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1)
   return {
-    baseUrl: config.baseUrl.get().replace(/\/+$/, ''),
+    baseUrl,
     tokenRef: config.tokenRef.get(),
     timeoutMs: config.timeoutMs.get(),
     guard: config.guard.get(),
