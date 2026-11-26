@@ -41,9 +41,9 @@ export function Page({ useProjection, sessionId, drafts, t }: Props) {
   const setTab = (next: Tab) => { drafts.set(tabKey, next); setTabState(next) }
   const refresh = useCallback(() => { setNonce(value => value + 1) }, [])
 
+  // The projection carries the turn counter; the ledger and the tool groups come back with the overview, which is
+  // what the page already reads, so a mutation just asks for it again.
   const turns = view?.turns ?? 0
-  const ledger = view?.ledger ?? null
-  const groups = `${String(view?.groups.record)}/${String(view?.groups.analysis)}`
   useEffect(() => {
     const controller = new AbortController()
     void (async () => {
@@ -56,11 +56,14 @@ export function Page({ useProjection, sessionId, drafts, t }: Props) {
       if (pendingResult.status === 'fulfilled') { setPending(pendingResult.value); setPendingError(null) } else setPendingError(message(pendingResult.reason))
     })()
     return () => { controller.abort() }
-  }, [session, turns, ledger, groups, nonce])
+  }, [session, turns, nonce])
 
   const change = async (run: () => Promise<unknown>) => {
     setBusy(true)
-    try { await run() } catch (error) { setOverviewError(message(error)) } finally { setBusy(false) }
+    try {
+      await run()
+      setNonce(value => value + 1)
+    } catch (error) { setOverviewError(message(error)) } finally { setBusy(false) }
   }
 
   const count = pending?.length ?? 0

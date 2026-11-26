@@ -1,34 +1,48 @@
 import { describe, expect, it } from 'vitest'
-import { fold, initialState } from '../src/state.ts'
-import { stateRecord, turnEnd } from './helpers.ts'
+import { applyChange, defaultLedgerState, fold, initialState, isGroup } from '../src/state.ts'
+import { stateSchema } from '../src/store.ts'
+import { turnEnd } from './helpers.ts'
 
 describe('session state', () => {
   it('starts with recording on, analysis off and no ledger', () => {
-    expect(initialState()).toEqual({ ledger: null, groups: { record: true, analysis: false }, turns: 0 })
+    expect(defaultLedgerState()).toEqual({ ledger: null, groups: { record: true, analysis: false } })
   })
 
-  it('counts ended turns', () => {
-    expect(fold(fold(initialState(), turnEnd()), turnEnd()).turns).toBe(2)
+  it('projects only what the session log can tell: ended turns', () => {
+    expect(initialState()).toEqual({ turns: 0 })
+    expect(fold(fold(initialState(), turnEnd()), turnEnd())).toEqual({ turns: 2 })
   })
 
-  it('follows ledger and group records, each change leaving the rest alone', () => {
-    let state = fold(initialState(), stateRecord({ ledger: 'personal' }))
-    state = fold(state, stateRecord({ groups: { analysis: true } }))
-    expect(state).toEqual({ ledger: 'personal', groups: { record: true, analysis: true }, turns: 0 })
-    state = fold(state, stateRecord({ groups: { record: false } }))
-    expect(state.groups).toEqual({ record: false, analysis: true })
-    expect(state.ledger).toBe('personal')
-  })
-
-  it('ignores records it does not understand and events that are not its own', () => {
+  it('leaves the projection alone for anything that is not an ended turn', () => {
     const state = initialState()
-    expect(fold(state, stateRecord({ ledger: 12 }))).toBe(state)
     expect(fold(state, { type: 'user/message' } as never)).toBe(state)
+    expect(fold(state, { type: 'turn/start' } as never)).toBe(state)
   })
 
-  it('is replayable: the same log gives the same state', () => {
-    const log = [stateRecord({ ledger: 'a' }), turnEnd(), stateRecord({ ledger: 'b' }), turnEnd()]
-    expect(log.reduce(fold, initialState())).toEqual(log.reduce(fold, initialState()))
-    expect(log.reduce(fold, initialState()).ledger).toBe('b')
+  it('applies one change at a time, leaving the rest alone', () => {
+    let state = applyChange(defaultLedgerState(), { ledger: 'personal' })
+    state = applyChange(state, { groups: { analysis: true } })
+    expect(state).toEqual({ ledger: 'personal', groups: { record: true, analysis: true } })
+    state = applyChange(state, { groups: { record: false } })
+    expect(state).toEqual({ ledger: 'personal', groups: { record: false, analysis: true } })
+    expect(applyChange(state, {}).ledger).toBe('personal')
+  })
+
+  it('knows the groups it offers', () => {
+    expect(isGroup('record')).toBe(true)
+    expect(isGroup('analysis')).toBe(true)
+    expect(isGroup('everything')).toBe(false)
+  })
+})
+
+describe('the stored record', () => {
+  it('round-trips a session state', () => {
+    const state = applyChange(defaultLedgerState(), { ledger: 'personal', groups: { record: false } })
+    expect(stateSchema.parse(JSON.parse(JSON.stringify(state)))).toEqual(state)
+  })
+
+  it('rejects anything it could not read back', () => {
+    expect(stateSchema.safeParse({ ledger: 12, groups: { record: true, analysis: false } }).success).toBe(false)
+    expect(stateSchema.safeParse({ ledger: null, groups: { record: 'yes' } }).success).toBe(false)
   })
 })

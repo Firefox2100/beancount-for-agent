@@ -1,35 +1,26 @@
-import { pluginRecordOf } from '@deepseek-ai/dsh-session'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 import { z } from 'zod'
-import { GROUPS, type BeancountView, type Group, type StateRecord } from './types.ts'
-
-export const STATE_RECORD = 'plugin:dsh-beancount/state'
+import { GROUPS, type BeancountProjection, type Group, type LedgerState, type StateRecord } from './types.ts'
 
 export const viewSchema = z.object({
-  ledger: z.string().nullable(),
-  groups: z.object({ record: z.boolean(), analysis: z.boolean() }),
   turns: z.number().int().min(0),
 })
 
-const recordSchema = z.object({
-  ledger: z.string().nullable().optional(),
-  groups: z.object({ record: z.boolean().optional(), analysis: z.boolean().optional() }).optional(),
-})
+/** A fresh session: nothing chosen yet, recording tools on, analysis tools off. */
+export const defaultLedgerState = (): LedgerState => ({ ledger: null, groups: { record: true, analysis: false } })
 
-/** A fresh session: recording on, analysis off until the person asks for it. */
-export const initialState = (): BeancountView => ({ ledger: null, groups: { record: true, analysis: false }, turns: 0 })
+export const initialState = (): BeancountProjection => ({ turns: 0 })
 
 /**
- * One committed event folded into the state. Pure and synchronous, as a projection must be: the same log always
- * gives the same state, so a reload shows the ledger and tool groups the session had.
+ * One committed event folded into the projection. Pure and synchronous, as a projection must be: only the turn
+ * counter is derived here, because the ledger and the tool groups live in the storage domain.
  */
-export function fold(state: BeancountView, event: SessionEvent): BeancountView {
-  if (event.type === 'turn/end') return { ...state, turns: state.turns + 1 }
-  const record = pluginRecordOf(event)
-  if (record === undefined || record.type !== STATE_RECORD) return state
-  const parsed = recordSchema.safeParse(record.data)
-  if (!parsed.success) return state
-  const change = parsed.data
+export function fold(state: BeancountProjection, event: SessionEvent): BeancountProjection {
+  return event.type === 'turn/end' ? { turns: state.turns + 1 } : state
+}
+
+/** The stored state with one change applied; the caller writes the result back as a whole record. */
+export function applyChange(state: LedgerState, change: StateRecord): LedgerState {
   const groups = { ...state.groups }
   for (const group of GROUPS) {
     const value = change.groups?.[group]
@@ -41,5 +32,3 @@ export function fold(state: BeancountView, event: SessionEvent): BeancountView {
 export function isGroup(value: string): value is Group {
   return (GROUPS as readonly string[]).includes(value)
 }
-
-export type { StateRecord }

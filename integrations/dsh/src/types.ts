@@ -5,30 +5,34 @@ import type {} from '@deepseek-ai/dsh-session-projection/types'
 export const GROUPS = ['record', 'analysis'] as const
 export type Group = (typeof GROUPS)[number]
 
-/** What the host keeps per session, and what the dock page may read. */
-export interface BeancountView {
+/** The part of a session this plugin owns: the ledger its tools work on, and which optional groups are on. */
+export interface LedgerState {
   /** The ledger every tool of this session works on; null until one is chosen. */
   ledger: string | null
   /** Which optional tool groups are on. */
   groups: Record<Group, boolean>
+}
+
+/** What the dock page reads: the owned state plus the turn counter derived from the session log. */
+export interface BeancountView extends LedgerState {
   /** How many turns have ended, so the page knows when to look again. */
   turns: number
 }
 
-/** One change to that state, as it is written to the session log. */
+/** One change to the owned state, applied and stored as a whole. */
 export interface StateRecord {
   ledger?: string | null
   groups?: Partial<Record<Group, boolean>>
 }
 
-declare module '@deepseek-ai/dsh-session/types' {
-  interface PluginRecordMap {
-    'plugin:dsh-beancount/state': StateRecord
-  }
+/** What the session projection keeps: only what is derived from existing session events. */
+export interface BeancountProjection {
+  /** How many turns have ended in this session. */
+  turns: number
 }
 
 declare module '@deepseek-ai/dsh-session-projection/types' {
   interface SessionProjectionMap {
-    beancount: BeancountView
+    beancount: BeancountProjection
   }
 }

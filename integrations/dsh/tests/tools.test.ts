@@ -1,7 +1,7 @@
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Finance } from '../src/finance.ts'
-import { initialState } from '../src/state.ts'
+import { defaultLedgerState } from '../src/state.ts'
 import { financeTools } from '../src/tools.ts'
 import type { BeancountView, StateRecord } from '../src/types.ts'
 import { stubService } from './helpers.ts'
@@ -21,7 +21,7 @@ const change = {
 async function setup(routes: Parameters<typeof stubService>[0], ledger: string | null = 'personal') {
   service = await stubService(routes)
   const finance = new Finance(() => ({ baseUrl: service?.url ?? '', tokenRef: 'T', timeoutMs: 2000, guard: true, guardPaths: [] }), async () => 'tok')
-  let state: BeancountView = { ...initialState(), ledger }
+  let state: BeancountView = { ...defaultLedgerState(), ledger, turns: 0 }
   const updates: StateRecord[] = []
   const tools = financeTools({
     finance,

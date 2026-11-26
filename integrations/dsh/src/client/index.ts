@@ -8,9 +8,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '../types.ts'
-import { en, type BeancountKey } from './locales.ts'
+import { de, en, es, fr, ja, pt, ru, zh, type BeancountKey } from './locales.ts'
 import { Page, type PageInjected } from './Page.tsx'
-import { SettingsController } from './settings/controller.ts'
+import { SettingsController, type BeancountSettings } from './settings/controller.ts'
 import { Section } from './settings/Section.tsx'
 
 declare module '@deepseek-ai/dsh-client-ui-slots' {
@@ -29,7 +29,8 @@ export const inject = ['slots', 'locale', 'configForms', 'sidebarRightTabs']
 /** A page in the right dock, reachable from its guide, and a tab in the settings menu. */
 export function apply(ctx: Context): void {
   const t = ctx.locale.bind(NAMESPACE)
-  ctx.effect(() => ctx.locale.register(NAMESPACE, { en } as never), 'dsh-beancount: dictionaries')
+  // Every language the harness ships, so the dock page and the settings tab read the same way the rest of the UI does.
+  ctx.effect(() => ctx.locale.register(NAMESPACE, { en, zh, ja, es, fr, de, ru, pt }), 'dsh-beancount: dictionaries')
 
   const drafts = new Map<string, string>()
   ctx.effect(() => ctx.sidebarRightTabs.register({
@@ -45,8 +46,9 @@ export function apply(ctx: Context): void {
     inject: (sessionId: SessionId): PageInjected => ({ sessionId, drafts }),
   }, Page)), 'dsh-beancount: page')
 
-  const settings = new SettingsController(ctx.configForms.get(ENTRY_ID) as never)
+  const settings = new SettingsController(ctx.configForms.get<BeancountSettings>(ENTRY_ID))
   ctx.effect(() => () => { settings.dispose() }, 'dsh-beancount: settings controller')
+  settings.start()
   const face = settings.inject()
   ctx.effect(
     () => ctx.configForms.whileServed([ENTRY_ID], () => ctx.slots.inject('settings.section', () => ctx.slots.register({
@@ -55,12 +57,8 @@ export function apply(ctx: Context): void {
       order: 43,
       label: () => t('settingsSection'),
       locale: NAMESPACE,
-      children: {},
-      inject: () => {
-        settings.start()
-        return { ...face, hooks: face.hooks }
-      },
-    }, Section as never))),
+      inject: () => face,
+    }, Section))),
     'dsh-beancount: settings section',
   )
 }

@@ -8,7 +8,7 @@ const ID = pkg.name
 /** Packages the web shell already holds one instance of; the client bundle must not carry a second copy. */
 const shared = new Set([
   'react', 'react/jsx-runtime', 'react-dom', 'react-dom/client', '@deepseek-ai/cordis',
-  '@deepseek-ai/dsh-client-store', '@deepseek-ai/dsh-client-ui-slots', '@deepseek-ai/dsh-client-ui-primitives',
+  '@deepseek-ai/dsh-client-store', '@deepseek-ai/dsh-client-ui-slots',
 ])
 
 /** CSS modules compiled to a class map plus a style tag the bundle adds once. */
@@ -52,7 +52,10 @@ const host: UserConfig = {
   sourcemap: true,
   fixedExtension: false,
   // The host's own packages are shared with DSH; the REST client is ours and is bundled into the plugin.
-  deps: { neverBundle: specifier => specifier.startsWith('@deepseek-ai/') },
+  deps: {
+    neverBundle: specifier => specifier.startsWith('@deepseek-ai/'),
+    alwaysBundle: specifier => specifier === '@beancount-mcp/client',
+  },
 }
 
 const client: UserConfig = {

@@ -1,7 +1,7 @@
 import { afterEach, describe, expect, it } from 'vitest'
 import { Finance } from '../src/finance.ts'
 import { createRoutes, type CredentialStatus, type SessionHandle } from '../src/routes.ts'
-import { initialState } from '../src/state.ts'
+import { applyChange, defaultLedgerState } from '../src/state.ts'
 import type { BeancountView, StateRecord } from '../src/types.ts'
 import { stubService } from './helpers.ts'
 
@@ -17,13 +17,13 @@ const pending = (id: string, created: string) => ({
 async function setup(routes: Parameters<typeof stubService>[0]) {
   service = await stubService(routes)
   const finance = new Finance(() => ({ baseUrl: service?.url ?? '', tokenRef: 'T', timeoutMs: 2000, guard: true, guardPaths: [] }), async () => 'tok')
-  let state: BeancountView = initialState()
+  let state: BeancountView = { ...defaultLedgerState(), turns: 0 }
   const updates: StateRecord[] = []
   const handle: SessionHandle = {
     state: () => state,
     update: async (change) => {
       updates.push(change)
-      state = { ...state, ...(change.ledger === undefined ? {} : { ledger: change.ledger }), groups: { ...state.groups, ...change.groups } }
+      state = { ...applyChange(state, change), turns: state.turns }
     },
   }
   const credential = { stored: false as boolean }

@@ -3,10 +3,11 @@
 .tabs { display: flex; gap: 4px; flex: 1 1 auto; }
 .tab { border: 0; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; padding: 4px 10px; border-radius: var(--dsw-radius-sm); cursor: pointer; }
 .tab[aria-selected='true'] { background: var(--dsw-alias-bg-layer-2); color: var(--dsw-alias-label-primary); }
-.badge { margin-left: 6px; padding: 0 6px; border-radius: 99px; background: var(--dsw-alias-brand-primary); color: #fff; font-size: 11px; }
+.badge { margin-left: 6px; padding: 0 6px; border-radius: 99px; background: var(--dsw-alias-brand-primary); color: var(--dsw-alias-bg-base); font-size: 11px; }
 .button { border: 1px solid var(--dsw-alias-border-l2); background: transparent; color: inherit; font: inherit; height: 24px; padding: 0 10px; border-radius: var(--dsw-radius-sm); cursor: pointer; }
 .button:disabled { opacity: 0.5; cursor: default; }
-.primary { background: var(--dsw-alias-brand-primary); border-color: var(--dsw-alias-brand-primary); color: #fff; }
+/* The page background token is the one colour that inverts against the brand surface in both themes. */
+.primary { background: var(--dsw-alias-brand-primary); border-color: var(--dsw-alias-brand-primary); color: var(--dsw-alias-bg-base); }
 .muted { color: var(--dsw-alias-label-secondary); font-size: var(--dsh-content-font-size-secondary, 12px); }
 .error { color: var(--dsw-alias-state-error-primary); }
 .notice { padding: 8px 10px; border-radius: var(--dsw-radius-sm); background: var(--dsw-alias-bg-layer-1); border: 1px solid var(--dsw-alias-border-l1); }

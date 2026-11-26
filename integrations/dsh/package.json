@@ -8,6 +8,7 @@
   "exports": {
     ".": "./lib/index.js",
     "./package.json": "./package.json",
+    "./cordis.patch.yml": "./cordis.patch.yml",
     "./locale/*.json": "./locale/*.json",
     "./client": "./lib/client.js"
   },
@@ -39,18 +40,25 @@
   "scripts": {
     "build": "tsdown",
     "watch": "tsdown --watch",
+    "prepack": "tsdown",
     "typecheck": "tsc -p tsconfig.json && tsc -p tsconfig.client.json",
     "test": "vitest run",
     "sync:dsh": "node scripts/sync-dsh-ranges.mjs"
   },
   "files": [
     "icon.svg",
-    "locale",
-    "lib",
-    "skills",
+    "locale/*.json",
+    "lib/index.js",
+    "lib/client.js",
+    "lib/*.js.map",
     "cordis.patch.yml",
+    "skills",
+    "src",
     "README.md"
   ],
+  "publishConfig": {
+    "access": "public"
+  },
   "peerDependencies": {
     "@deepseek-ai/cordis": "^4.0.5",
     "@deepseek-ai/dsh": ">=0.2.2-rc.1 <0.2.3",
@@ -60,14 +68,16 @@
     "@deepseek-ai/dsh-llm": ">=0.2.2-rc.1 <0.2.3",
     "@deepseek-ai/dsh-session": ">=0.2.2-rc.1 <0.2.3",
     "@deepseek-ai/dsh-session-projection": ">=0.2.2-rc.1 <0.2.3",
+    "@deepseek-ai/dsh-storage": ">=0.2.2-rc.1 <0.2.3",
+    "@deepseek-ai/dsh-storage-domain": ">=0.2.2-rc.1 <0.2.3",
     "@deepseek-ai/dsh-tools": ">=0.2.2-rc.1 <0.2.3",
     "@deepseek-ai/schemastery": "^3.18.4"
   },
   "dependencies": {
-    "@beancount-mcp/client": "workspace:*",
     "zod": "4.4.3"
   },
   "devDependencies": {
+    "@beancount-mcp/client": "workspace:*",
     "@deepseek-ai/cordis": "^4.1.0",
     "@deepseek-ai/dsh-agent": "0.2.2-rc.1",
     "@deepseek-ai/dsh-api-gateway": "0.2.2-rc.1",
@@ -75,7 +85,6 @@
     "@deepseek-ai/dsh-client-connection": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-locale": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-store": "0.2.2-rc.1",
-    "@deepseek-ai/dsh-client-ui-primitives": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-renderer": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-session": "0.2.2-rc.1",
     "@deepseek-ai/dsh-client-ui-settings": "0.2.2-rc.1",
@@ -88,6 +97,8 @@
     "@deepseek-ai/dsh-session": "0.2.2-rc.1",
     "@deepseek-ai/dsh-session-projection": "0.2.2-rc.1",
     "@deepseek-ai/dsh-skill": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-storage": "0.2.2-rc.1",
+    "@deepseek-ai/dsh-storage-domain": "0.2.2-rc.1",
     "@deepseek-ai/dsh-tools": "0.2.2-rc.1",
     "@deepseek-ai/schemastery": "^3.18.5",
     "@types/node": "^22.20.0",

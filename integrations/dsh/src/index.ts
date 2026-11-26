@@ -7,25 +7,26 @@ import type {} from '@deepseek-ai/dsh-commands'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-credentials'
 import type {} from '@deepseek-ai/dsh-host-webserver'
-import { appendPluginRecord } from '@deepseek-ai/dsh-session'
 import type { Session } from '@deepseek-ai/dsh-session'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-skill'
+import type {} from '@deepseek-ai/dsh-storage-domain'
 import { Finance } from './finance.ts'
 import { judge } from './guard.ts'
 import { createRoutes, type CredentialStatus, type SessionHandle } from './routes.ts'
 import { Config, settingsOf, type Accessors } from './settings.ts'
-import { STATE_RECORD, fold, initialState, isGroup, viewSchema } from './state.ts'
+import { applyChange, defaultLedgerState, fold, initialState, isGroup, viewSchema } from './state.ts'
+import { ledgerDomain } from './store.ts'
 import { financeTools } from './tools.ts'
-import type { StateRecord } from './types.ts'
+import type { BeancountView, LedgerState, StateRecord } from './types.ts'
 
 export { Config }
 
 /** The Loader entry id, and the settings namespace. */
 export const name = 'beancount'
 
-export const inject = ['tools', 'sessionProjections', 'sessions', 'commands']
+export const inject = ['tools', 'sessionProjections', 'sessions', 'commands', 'storageDomain']
 
 const SKILL_PATH = join(dirname(fileURLToPath(import.meta.url)), '..', 'skills', 'finance', 'SKILL.md')
 const USAGE = '/finance ledger <id> | tools <record|analysis> <on|off> | status'
@@ -48,6 +49,16 @@ export async function apply(ctx: Context, config: Accessors): Promise<void> {
   const token = async () => (await ctx.get('credentials')?.resolve(ref()))?.value
   const finance = new Finance(settings, token)
 
+  // The ledger and the tool groups are this plugin's own data, so they live in its storage domain. Only the turn
+  // counter is projected from the session log, because that is derived from events the session already has.
+  const storage = ctx.get('storageDomain')
+  if (storage === undefined) throw new Error('this profile has no storage domain: dsh-base provides it')
+  const domain = await storage.open(ledgerDomain)
+  ctx.effect(() => async () => {
+    await domain.close()
+  }, 'dsh-beancount: ledger domain')
+  const records = domain.table('sessions')
+
   const projection = await ctx.sessionProjections.register({
     key: 'beancount',
     stateVersion: 1,
@@ -57,19 +68,26 @@ export async function apply(ctx: Context, config: Accessors): Promise<void> {
     wire: { viewSchema, view: state => state },
   })
 
+  /** A session's state: its stored record, plus what the projection derives from the log. */
+  const stateOf = (session: Session): BeancountView => ({
+    ...(records.get(String(session.id)) ?? defaultLedgerState()),
+    turns: projection.stateOf(session).turns,
+  })
+
   const write = async (session: Session, change: StateRecord): Promise<void> => {
-    appendPluginRecord(session, STATE_RECORD, change)
-    await ctx.sessions.flush(session)
+    const key = String(session.id)
+    const current: LedgerState = records.get(key) ?? defaultLedgerState()
+    await records.put(key, applyChange(current, change))
   }
 
   for (const { group, definition } of financeTools({
     finance,
-    stateOf: agent => projection.stateOf(agent.session),
+    stateOf: agent => stateOf(agent.session),
     update: (agent, change) => write(agent.session, change),
   })) {
     ctx.tools.register(
       definition,
-      group === 'core' ? undefined : { when: ({ agent }) => projection.stateOf(agent.session).groups[group] },
+      group === 'core' ? undefined : { when: ({ agent }) => stateOf(agent.session).groups[group] },
     )
   }
 
@@ -87,7 +105,7 @@ export async function apply(ctx: Context, config: Accessors): Promise<void> {
     recordInput: false,
     async handler({ agent, rawInput }) {
       const [verb, first, second] = rawInput.trim().split(/\s+/)
-      const state = projection.stateOf(agent.session)
+      const state = stateOf(agent.session)
       if (verb === 'status') {
         return { kind: 'success', text: `ledger: ${state.ledger ?? 'none'}; record tools ${state.groups.record ? 'on' : 'off'}; analysis tools ${state.groups.analysis ? 'on' : 'off'}` }
       }
@@ -142,7 +160,7 @@ export async function apply(ctx: Context, config: Accessors): Promise<void> {
       }
       if (session === undefined) return undefined
       const found = session
-      return { state: () => projection.stateOf(found), update: change => write(found, change) }
+      return { state: () => stateOf(found), update: change => write(found, change) }
     },
   })
 

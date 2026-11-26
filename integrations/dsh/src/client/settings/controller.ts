@@ -1,15 +1,16 @@
-import type { SnapshotStore } from '@deepseek-ai/dsh-client-store'
-import {
-  SettingsFormModel,
-  settingsNumberField,
-  settingsTextField,
-  type SettingsFieldSpec,
-  type SettingsFieldState,
-  type SettingsFormActions,
-  type SettingsFormScope,
-  type SettingsFormShell,
-} from '@deepseek-ai/dsh-client-ui-primitives'
 import { getJson, postJson, type ConnectionStatus } from '../api.ts'
+import {
+  FormModel,
+  Store,
+  numberField,
+  textField,
+  type Field,
+  type FieldSpec,
+  type FieldState,
+  type FormShell,
+  type Scope,
+  type SnapshotSource,
+} from './form.ts'
 
 /** The plugin's settings as the form sees them. */
 export interface BeancountSettings {
@@ -22,14 +23,14 @@ export interface BeancountSettings {
 
 export type TestResult = { kind: 'ok'; ledgers: string[] } | { kind: 'failed'; message: string }
 
-export interface SettingsState extends SettingsFormShell {
-  baseUrl: SettingsFieldState
-  tokenRef: SettingsFieldState
-  timeoutMs: SettingsFieldState
+export interface SettingsState extends FormShell {
+  baseUrl: FieldState
+  tokenRef: FieldState
+  timeoutMs: FieldState
   guard: boolean
-  guardPaths: SettingsFieldState
+  guardPaths: FieldState
   /** The staged token text; a stored token never leaves the host, so a draft starts blank. */
-  token: SettingsFieldState
+  token: FieldState
   /** What the credential store says, never the value; absent until read. */
   credential: ConnectionStatus['credential'] | undefined
   tokenError?: string
@@ -37,21 +38,29 @@ export interface SettingsState extends SettingsFormShell {
   test?: TestResult
 }
 
-export interface SettingsFace extends SettingsFormActions {
-  hooks: { settings: SnapshotStore<SettingsState> }
+/** What the settings page may do. */
+export interface SettingsActions {
+  edit(field: Field, text: string): void
+  resetField(field: Field): void
+  save(): Promise<void>
+  discard(): void
+}
+
+export interface SettingsFace extends SettingsActions {
+  hooks: { settings: SnapshotSource<SettingsState> }
   setGuard(on: boolean): void
   removeToken(): Promise<boolean>
   test(): Promise<void>
 }
 
-const guardField: SettingsFieldSpec = {
+const guardField: FieldSpec = {
   field: 'guard',
   format: value => (value === false ? 'false' : 'true'),
   parse: text => (text === 'true' ? { kind: 'set', value: true } : text === 'false' ? { kind: 'set', value: false } : undefined),
 }
 
 /** One path a line; a blank line is nothing. */
-const pathsField: SettingsFieldSpec = {
+const pathsField: FieldSpec = {
   field: 'guardPaths',
   format: value => (Array.isArray(value) ? value.join('\n') : ''),
   parse: text => ({ kind: 'set', value: text.split('\n').map(line => line.trim()).filter(line => line !== '') }),
@@ -62,8 +71,9 @@ const pathsField: SettingsFieldSpec = {
  * so saving the page writes it and a discarded draft leaves the store alone), the guard, and a connection test.
  */
 export class SettingsController {
-  private readonly form: SettingsFormModel<BeancountSettings>
-  private readonly store: SnapshotStore<SettingsState>
+  private readonly form: FormModel<BeancountSettings>
+  private readonly store: Store<SettingsState>
+  private readonly leave: () => void
   private abort = new AbortController()
   private credential: SettingsState['credential']
   private tokenError: string | undefined
@@ -71,13 +81,14 @@ export class SettingsController {
   private tested: TestResult | undefined
   private running = false
 
-  constructor(scope: SettingsFormScope<BeancountSettings>) {
-    this.form = new SettingsFormModel(
+  constructor(scope: Scope<BeancountSettings>) {
+    this.form = new FormModel(
       scope,
-      [guardField, pathsField, settingsTextField('baseUrl'), settingsTextField('tokenRef'), settingsNumberField('timeoutMs')],
+      [guardField, pathsField, textField('baseUrl'), textField('tokenRef'), numberField('timeoutMs')],
       [{ field: 'token', write: (text: string) => this.writeToken(text) }],
     )
-    this.store = this.form.bind(() => this.projection())
+    this.store = new Store(this.projection())
+    this.leave = scope.subscribe(() => { this.store.set(this.projection()) })
   }
 
   start(): void {
@@ -146,8 +157,14 @@ export class SettingsController {
   inject(): SettingsFace {
     return {
       hooks: { settings: this.store },
-      ...this.form.actions(),
-      setGuard: (on) => { this.form.actions().edit('guard', on ? 'true' : 'false') },
+      edit: (field, text) => { this.form.edit(field, text); this.store.set(this.projection()) },
+      resetField: (field) => { this.form.resetField(field); this.store.set(this.projection()) },
+      discard: () => { this.form.discard(); this.store.set(this.projection()) },
+      save: async () => {
+        await this.form.save()
+        this.store.set(this.projection())
+      },
+      setGuard: (on) => { this.form.edit('guard', on ? 'true' : 'false'); this.store.set(this.projection()) },
       removeToken: () => this.writeToken(''),
       test: () => this.test(),
     }
@@ -155,6 +172,6 @@ export class SettingsController {
 
   dispose(): void {
     this.stop()
-    this.form.dispose()
+    this.leave()
   }
 }

@@ -15,6 +15,8 @@ service's `/agent/*` HTTP surface directly, with no MCP server to configure.
 - **Skill** (`finance`): how the books are modelled, for models that do not know Beancount.
 - **Page** (right dock): overview of the active ledger, and approving or rejecting what the model proposed. These
   calls are made by the host as you, with the stored token, and never appear in the conversation.
+- **Languages**: the page and the settings tab are translated into every language the harness ships (English, Chinese,
+  Japanese, Spanish, French, German, Russian and Portuguese); `locale/*.json` gives each language the plugin's listing text.
 
 ## Settings
 

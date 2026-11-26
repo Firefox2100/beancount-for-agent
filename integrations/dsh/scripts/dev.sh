@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Dev instance of DSH for this plugin: its own profile (tarot-dev), its own port, detached from the shell that starts it.
+# Dev instance of DSH for this plugin: its own profile (beancount-dev), its own port, detached from the shell that starts it.
 # usage: scripts/dev.sh start|stop|restart|status|logs|url
 set -euo pipefail
 

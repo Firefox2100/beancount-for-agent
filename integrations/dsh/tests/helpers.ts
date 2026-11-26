@@ -2,7 +2,6 @@ import { createServer } from 'node:http'
 import type { SessionEvent } from '@deepseek-ai/dsh-session/types'
 
 export const turnEnd = (): SessionEvent => ({ type: 'turn/end' }) as unknown as SessionEvent
-export const stateRecord = (data: unknown): SessionEvent => ({ type: 'plugin:dsh-beancount/state', ignorable: true, seq: 1, time: 0, data }) as unknown as SessionEvent
 
 export interface Seen { method: string; path: string; query: string; headers: Record<string, string | string[] | undefined>; body: string }
 
