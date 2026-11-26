@@ -36,10 +36,10 @@ Restart Claude Code, or run `/reload-plugins`, and check `/mcp` for `beancount` 
 
 ## What it adds
 
-- **MCP** (`.mcp.json`): connects to `<url>/mcp` with the token. The token reaches only the MCP connection and the plugin's hooks, not the agent's shell.
-- **Skill** (`beancount`): how to record and look up finances, and how the books are modelled (accounts, double entry, account types, currencies, open items, balance checks). It tells the model that every write is a proposal and that it cannot approve.
-- **Guard** (`hooks/guard.sh`, before tools run): refuses `Bash`, `Read`, `Write`, `Edit`, `Glob` and `Grep` calls that touch ledger files, the sidecar, the token or the service settings. For shell commands it checks the whole command. For file tools it checks only the target path, never the text written, so editing source code that merely mentions a ledger file is allowed. Set `BEANCOUNT_MCP_GUARD_PATHS` (colon separated) in the environment Claude Code starts from to protect more, such as the data folder. Without `jq` the guard cannot read its input and lets the call through.
-- **Briefing** (`hooks/briefing.sh`, at session start): tells the model how many proposals are waiting and what is due within a week. It fails open: with the service down the session just starts without it.
+- `.mcp.json` connects to `<url>/mcp` with the token. The token reaches only the MCP connection and the plugin's hooks, not the agent's shell.
+- The `beancount` skill explains how to record and look up finances and how the books are modelled: accounts, double entry, account types, currencies, open items and balance checks. It tells the model that every write is a proposal and that it cannot approve one.
+- `hooks/guard.sh` runs before tools. It refuses `Bash`, `Read`, `Write`, `Edit`, `Glob` and `Grep` calls that touch ledger files, the sidecar, the token or service settings. For shell commands it checks the whole command. For file tools it checks only the target path, never the text being written, so source code may still mention a ledger file. Set `BEANCOUNT_MCP_GUARD_PATHS` (colon separated) in Claude Code's environment to protect more paths, such as the data folder. Without `jq`, the guard cannot read its input and lets the call through.
+- `hooks/briefing.sh` runs at session start. It tells the model how many proposals are waiting and what is due within a week. If the service is down, the session starts without the briefing.
 
 ## Reviewing proposals
 

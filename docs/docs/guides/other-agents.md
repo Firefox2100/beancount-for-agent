@@ -30,10 +30,10 @@ The server's own instructions tell the model to start with `list_accounts`, to p
 
 ## What the model can do
 
-- **Read:** `list_ledgers`, `list_accounts`, `list_account_types`, `get_balances`, `search_transactions`, `get_open_items`, `get_due`, `get_credit_pools`, `list_recipes`.
-- **Propose:** `record_expense`, `record_income`, `record_transfer`, `reconcile_account`, `open_account`, `close_account`, `perform_recipe`, `amend_transaction`, `delete_transaction`.
-- **Own proposals:** `list_my_proposals`, `withdraw_proposal`. There is no approve tool.
-- **Direct:** `create_ledger`.
+- Read tools are `list_ledgers`, `list_accounts`, `list_account_types`, `get_balances`, `search_transactions`, `get_open_items`, `get_due`, `get_credit_pools` and `list_recipes`.
+- Proposal tools are `record_expense`, `record_income`, `record_transfer`, `reconcile_account`, `open_account`, `close_account`, `perform_recipe`, `amend_transaction` and `delete_transaction`.
+- Agents can inspect or withdraw their own proposals with `list_my_proposals` and `withdraw_proposal`. There is no approve tool.
+- `create_ledger` is the only direct write.
 
 Every tool carries annotations (`readOnlyHint`, `destructiveHint`) and a tag (`read`, `propose`, `recipe`, `admin`), so a client can mask or gate groups of them. `ledger` has the same name and is optional on every tool that takes it, so a client or proxy can inject or mask it mechanically.
 

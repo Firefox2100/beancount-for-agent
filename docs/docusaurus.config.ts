@@ -31,6 +31,7 @@ const config: Config = {
   themeConfig: {
     navbar: {
       title: 'Beancount for agents',
+      logo: { alt: 'Beancount for agents', src: 'img/brand-mark.svg' },
       items: [
         { type: 'docSidebar', sidebarId: 'main', position: 'left', label: 'Documentation' },
         { href: 'https://github.com/Firefox2100/beancount-for-agent', label: 'GitHub', position: 'right' },

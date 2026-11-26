@@ -228,7 +228,9 @@ src/beancount_mcp/_version.py
 # local config and data
 .env
 /data/
+**/.impeccable/
 PRODUCT.md
+DESIGN.md
 AGENTS.md
 
 # Node (integrations workspace)

@@ -1,14 +1,1 @@
-{% macro blocks(items) %}
-{% for block in items %}
-  <div style="margin:.5rem 0">
-    <strong>{{ block.title }}</strong>
-    {% if block.postings %}
-    <table class="postings">
-      <thead><tr><th scope="col">Account</th><th scope="col" class="num">Amount</th></tr></thead>
-      <tbody>{% for account, amount in block.postings %}<tr><td>{{ account }}</td><td class="num">{{ amount }}</td></tr>{% endfor %}</tbody>
-    </table>
-    {% endif %}
-    {% for line in block.lines %}<div class="muted small">{{ line }}</div>{% endfor %}
-  </div>
-{% endfor %}
-{% endmacro %}
+{% macro blocks(items) %}{% for block in items %}<section class="change-block"><h3>{{ block.title }}</h3>{% if block.postings %}<div class="table-wrap postings"><table><thead><tr><th scope="col">Account</th><th scope="col" class="num">Amount</th></tr></thead><tbody>{% for account, amount in block.postings %}<tr><td>{{ account }}</td><td class="num">{{ amount }}</td></tr>{% endfor %}</tbody></table></div>{% endif %}{% if block.lines %}<div class="change-lines">{% for line in block.lines %}<div class="muted small">{{ line }}</div>{% endfor %}</div>{% endif %}</section>{% endfor %}{% endmacro %}

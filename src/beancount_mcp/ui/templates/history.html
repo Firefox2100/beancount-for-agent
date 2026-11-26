@@ -1,13 +1,1 @@
-{% extends "base.html" %}
-{% from "_change.html" import blocks %}
-{% block title %}History · Beancount{% endblock %}
-{% block body %}
-<h1>History of {{ ledger }}</h1>
-{% for item in items %}{% set c = item.change %}
-  <div class="card">
-    <div class="small"><span class="tag">{{ c.status.value }}</span> <span class="muted">{{ c.id }} · {{ (c.resolved_at or c.created_at).strftime("%Y-%m-%d %H:%M") }}</span></div>
-    {% if c.resolution_note %}<div class="muted small">“{{ c.resolution_note }}”</div>{% endif %}
-    {{ blocks(item.blocks) }}
-  </div>
-{% else %}<p class="muted">Nothing has been resolved yet.</p>{% endfor %}
-{% endblock %}
+{% extends "base.html" %}{% from "_change.html" import blocks %}{% block title %}History · Beancount{% endblock %}{% block nav %}<a href="/ui/ledgers/{{ ledger }}/history" aria-current="page">History</a><a href="/ui/ledgers/{{ ledger }}/accounts">Accounts</a><a href="/ui/ledgers/{{ ledger }}/pools">Credit pools</a>{% endblock %}{% block body %}<header class="page-head"><div><h1>Decision history</h1><p>Resolved proposals for {{ ledger }}, with their exact postings and resolution notes.</p></div></header>{% for item in items %}{% set c = item.change %}<article class="card"><div class="row"><span class="tag {{ c.status.value }}">{{ c.status.value }}</span><span class="muted small">{{ c.id }} · <time datetime="{{ (c.resolved_at or c.created_at).isoformat() }}">{{ (c.resolved_at or c.created_at).strftime("%Y-%m-%d %H:%M") }}</time></span></div>{% if c.resolution_note %}<p class="proposal-note">{{ c.resolution_note }}</p>{% endif %}{{ blocks(item.blocks) }}</article>{% else %}<div class="empty">Nothing has been resolved yet.</div>{% endfor %}{% endblock %}

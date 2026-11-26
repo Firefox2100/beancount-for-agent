@@ -6,9 +6,9 @@ title: Agent API
 
 The agent API serves the [MCP tools](mcp-tools.md)' operations over HTTP, for harness plugins that register native tools instead of using MCP. It is a thin adapter over the same service the MCP tools use, so account matching, recipe choice, lenient input and bank-detail masking are identical.
 
-- **Callers are always agents**, whatever `X-Actor` says. The client and session come from `X-Client-Id` and `X-Session-Id`.
-- **Everything that writes is a proposal.** Nothing here approves one: approval uses the [REST API](rest-api.md) as a user.
-- **`ledger` is an optional field** on every request, so a plugin can keep the active ledger in its own session and leave it out of the tool schemas the model sees. With exactly one ledger it can always be left out.
+- Callers are always agents, whatever `X-Actor` says. The client and session come from `X-Client-Id` and `X-Session-Id`.
+- Every write creates a proposal. Approval uses the [REST API](rest-api.md) as a user.
+- The `ledger` field is optional on every request. A plugin can keep the active ledger in its session and omit it from the model's tool schemas. With exactly one ledger, it can always be omitted.
 - Send `Authorization: Bearer <token>` when the service has a token.
 
 ## Agent

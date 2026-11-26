@@ -69,8 +69,8 @@ Where an account lives at its bank is stored as metadata on its `open` line, so 
 
 Values are normalised on input: a sort code becomes `20-12-34`, an IBAN is upper-cased, an expiry becomes `MM/YY`. **Nothing that authorises a payment is accepted**: there is no field for a CVV, PIN or password, and unknown fields are refused.
 
-- **You** set them in the [web interface](../guides/web-interface.md) (an account page) or with `PUT /ledgers/{id}/accounts/{account}/details`. Agents are refused, and no MCP tool takes them.
-- **Agents see them masked.** Sort code, account number, routing number, IBAN, card number and expiry arrive as `••••5678`; the bank name, holder, branch and SWIFT arrive as they are. An agent can recognise which account a statement refers to without ever holding the number.
+- Set these details on an account page in the [web interface](../guides/web-interface.md), or use `PUT /ledgers/{id}/accounts/{account}/details`. Agents are refused, and no MCP tool accepts them.
+- Agents receive masked values. Sort code, account number, routing number, IBAN, card number and expiry arrive as `••••5678`. The bank name, holder, branch and SWIFT are unchanged. This is enough to recognise an account without revealing its number.
 - The REST API shows them in full, to you.
 
 ## Opening and closing

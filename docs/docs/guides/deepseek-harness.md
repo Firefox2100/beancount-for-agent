@@ -16,7 +16,7 @@ Install the package into a DSH profile and restart the profile (a manifest chang
 dsh plugin --profile <profile> add /path/to/beancount-for-agent/integrations/dsh
 ```
 
-Then open **Settings → Beancount**.
+Then open **Settings > Beancount**.
 
 ## Settings
 
@@ -37,8 +37,8 @@ The Beancount tab of DSH's settings menu holds:
 
 Open the right dock's guide and choose **Beancount**. It has two tabs, and refreshes when it opens, when a turn ends, and when the ledger or a tool group changes. Anything you have typed and not sent is kept across those refreshes.
 
-- **Overview.** The ledger switcher, the tool-group switches, and the open accounts grouped by Assets, Liabilities, Equity, Income and Expenses with their balances.
-- **Approval.** What is waiting, with the exact postings and who proposed it. Add a note, then **Approve** or **Reject**.
+- The overview contains the ledger switcher, tool-group switches and open accounts. Accounts are grouped by Assets, Liabilities, Equity, Income and Expenses, with their balances.
+- The approval tab shows what is waiting, the exact postings and who proposed the change. You can add a note before choosing **Approve** or **Reject**.
 
 These calls are made by the DSH host as you, with the stored token. They do not appear in the conversation and the model never sees them.
 

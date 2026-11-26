@@ -21,12 +21,12 @@ An agent discovers what an account can do with `list_recipes` and performs one w
 
 Agents fail on avoidable details, so recipes ask for the least and do the arithmetic themselves:
 
-- **`date`** defaults to today.
-- **An amount** is an object, text such as `"12.50 USD"`, or a bare number when the account holds exactly one currency. The sign is ignored, because the recipe knows the direction. Zero is refused.
-- **Linked amounts**: where two amounts are related, either is accepted. A converted amount or a `rate`; gross or net pay; principal or total repayment; price per unit or total.
-- **Defaults** come from the profile when it has them (autopay source, interest account, cash account, gains account). The error names the missing setting when it does not.
-- **Account names** in the agent tools are matched loosely: an exact name, then a case-insensitive one, then a unique trailing segment (`Checking`, `Bank:Checking`), then a unique word in the name or description. An ambiguous or unknown name fails with the candidates listed. The REST API for people stays strict.
-- **Errors say what to send instead**, not just what was wrong.
+- The `date` defaults to today.
+- An amount may be an object, text such as `"12.50 USD"`, or a bare number when the account holds exactly one currency. The recipe knows the direction, so it ignores the sign. Zero is refused.
+- For two linked amounts, you may send either value. Examples include a converted amount or a `rate`, gross or net pay, principal or total repayment, and price per unit or total.
+- Defaults come from the profile when available, including the autopay source, interest account, cash account and gains account. The error names any missing setting.
+- Agent tools match account names loosely. They try an exact name, a case-insensitive match, a unique trailing segment (`Checking`, `Bank:Checking`), then a unique word in the name or description. Ambiguous and unknown names fail with a list of candidates. The user-facing REST API stays strict.
+- Errors explain what to send next, not only what went wrong.
 
 ## Multiple currencies
 
@@ -40,8 +40,8 @@ This is the case the recipes were built against. A card can hold balances in two
 
 - A purchase in a billing currency of the card posts straight to the card's liability.
 - A purchase in another currency posts to an **`Unbilled` sub-account** in its own currency, because the bank's conversion is not known until the statement.
-- **`close_statement`** converts the unbilled amount into the billed currency at the bank's actual figure. Beancount balances this with a total price, so no gain or loss account is needed.
-- **`pay_card`** clears a bill in either currency, or both. Both the amount debited and the amount cleared are given, because the bank sets the rate.
+- `close_statement` converts the unbilled amount into the billed currency at the bank's actual figure. Beancount balances this with a total price, so no gain or loss account is needed.
+- `pay_card` clears a bill in either currency, or both. You provide the amount debited and the amount cleared because the bank sets the rate.
 - When a card converts a foreign purchase at purchase time (the `billed_amount` of `purchase`), the entry records the billed amount on both sides and keeps the original amount as `original-amount` metadata.
 
 Autopay is configuration, not a scheduler: the profile records the source account and the due day, and a harness polls [`get_due`](views.md) and proposes the payment. The service never runs jobs. See [Worked examples](../guides/worked-examples.md).
@@ -58,5 +58,5 @@ A reimbursement claim, a loan to a person, an invoice and a bill to pay are one 
 
 Built-in recipes use the same interface as extensions. A recipe has an id, a title, the account types it applies to, a pydantic parameter model (its JSON schema is what agents see) and `compile(params, context)`, which returns one operation. The context is read-only: the account, its profile, the ledger's accounts and their balances.
 
-- **Python plugins** register recipes through the `beancount_mcp.recipes` entry point group. The entry point is a callable that receives the registry. Plugins are installed by whoever deploys the service, never by agents, and are trusted code. Their output still passes validation.
-- **Declarative recipes** (data files with posting patterns) are planned. An agent may draft one as a proposal that you approve, since data cannot run code. Python plugins are never accepted through a tool.
+- Python plugins register recipes through the `beancount_mcp.recipes` entry point group. The entry point is a callable that receives the registry. Whoever deploys the service installs the plugins; agents cannot install them. Plugin output still passes validation.
+- Declarative recipes, stored as data files with posting patterns, are planned. An agent may draft one as a proposal for you to approve because the data cannot run code. Python plugins are never accepted through a tool.

@@ -1,13 +1,1 @@
-{% extends "base.html" %}
-{% block title %}Accounts · Beancount{% endblock %}
-{% block nav %}<a href="/ui/ledgers/{{ ledger }}/accounts">Accounts</a><a href="/ui/ledgers/{{ ledger }}/pools">Credit pools</a>{% endblock %}
-{% block body %}
-<h1>Accounts in {{ ledger }}</h1>
-{% if errors %}<div class="flash error">The ledger has {{ errors|length }} error(s): {{ errors[0].message }}</div>{% endif %}
-<table class="card">
-  <tr><th>Account</th><th>Type</th><th>Currencies</th><th>Bank</th></tr>
-  {% for a in accounts %}
-  <tr><td><a href="/ui/ledgers/{{ ledger }}/accounts/{{ a.name }}">{{ a.name }}</a></td><td>{{ a.type or "" }}</td><td>{{ a.currencies|join(", ") }}</td><td class="muted">{{ a.details.get("bank_name", "") }}</td></tr>
-  {% else %}<tr><td colspan="4" class="muted">No accounts yet. Ask the agent to propose them.</td></tr>{% endfor %}
-</table>
-{% endblock %}
+{% extends "base.html" %}{% block title %}Accounts · Beancount{% endblock %}{% block nav %}<a href="/ui/ledgers/{{ ledger }}/accounts" aria-current="page">Accounts</a><a href="/ui/ledgers/{{ ledger }}/pools">Credit pools</a>{% endblock %}{% block body %}<header class="page-head"><div><h1>Accounts</h1><p>Human-visible account identity and service configuration for {{ ledger }}.</p></div></header>{% if errors %}<div class="flash error">The ledger has {{ errors|length }} error(s): {{ errors[0].message }}</div>{% endif %}<div class="table-wrap"><table><thead><tr><th scope="col">Account</th><th scope="col">Type</th><th scope="col">Currencies</th><th scope="col">Bank</th></tr></thead><tbody>{% for a in accounts %}<tr><td><a href="/ui/ledgers/{{ ledger }}/accounts/{{ a.name }}">{{ a.name }}</a></td><td>{{ a.type or "—" }}</td><td>{{ a.currencies|join(", ") or "—" }}</td><td class="muted">{{ a.details.get("bank_name", "—") }}</td></tr>{% else %}<tr><td colspan="4" class="muted">No accounts yet. Ask the agent to propose them.</td></tr>{% endfor %}</tbody></table></div>{% endblock %}

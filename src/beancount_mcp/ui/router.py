@@ -6,6 +6,7 @@ from urllib.parse import quote, urlencode, urlparse
 
 from fastapi import APIRouter, Depends, FastAPI, HTTPException, Request
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
+from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 from pydantic import ValidationError
 
@@ -288,6 +289,7 @@ router.include_router(protected)
 
 def install(app: FastAPI, token: str | None) -> None:
     app.state.ui_auth = UiAuth(token)
+    app.mount("/ui/static", StaticFiles(directory=Path(__file__).parent / "static"), name="ui-static")
 
     @app.exception_handler(LoginRequired)
     async def login_redirect(_: Request, exc: LoginRequired) -> Response:

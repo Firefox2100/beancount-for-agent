@@ -1,11 +1,1 @@
-{% extends "base.html" %}
-{% block title %}Sign in · Beancount{% endblock %}
-{% block body %}
-<h1>Sign in</h1>
-<form method="post" action="/ui/login" class="card">
-  <input type="hidden" name="next" value="{{ next }}">
-  <label for="token">Service token</label>
-  <input id="token" type="password" name="token" autocomplete="current-password" required>
-  <div class="row form" style="margin-top:.9rem"><button class="primary" type="submit">Sign in</button></div>
-</form>
-{% endblock %}
+{% extends "base.html" %}{% block title %}Sign in · Beancount{% endblock %}{% block body %}<div class="login-wrap"><div class="login-panel"><h1>Human access</h1><p class="muted">Use the service token to open the approval and account-control interface.</p><form method="post" action="/ui/login" class="card elevated"><input type="hidden" name="next" value="{{ next }}"><label for="token">Service token</label><input id="token" type="password" name="token" autocomplete="current-password" required><div class="row" style="margin-top:1rem"><button class="primary" type="submit">Sign in</button></div></form></div></div>{% endblock %}

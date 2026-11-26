@@ -1,5 +1,5 @@
 ---
-slug: /
+slug: /introduction
 title: Beancount for agents
 sidebar_label: Introduction
 ---
@@ -10,9 +10,9 @@ Beancount for agents is a service that lets AI agents record and look up your fi
 
 Agents are useful for bookkeeping. They can read a receipt, understand "I paid the pharmacy 18.65 pounds on my card", and know which accounts that touches. They are also unreliable with exact syntax, arithmetic and foreign exchange, and you do not want one rewriting your books unreviewed. So the service puts three things between the agent and the ledger:
 
-- **Intent-shaped operations.** The agent says *record an expense*, *pay the card bill* or *reconcile this account*. The service turns that into the right postings, in several currencies if needed, and does the arithmetic.
-- **Validation.** Every change is checked against the real ledger (parsing, booking, balance assertions) on a staged copy. A change that would introduce an error is refused and the ledger is left alone.
-- **Human approval.** Agent changes are **proposals**. You review the exact postings and approve or reject them, in the web interface or inside your agent harness. Nothing reaches the ledger until you do.
+- The agent asks to *record an expense*, *pay the card bill* or *reconcile this account*. The service turns that intent into the right postings, in several currencies if needed, and does the arithmetic.
+- Every change is checked against the real ledger (parsing, booking and balance assertions) on a staged copy. A change that would introduce an error is refused, leaving the ledger alone.
+- Agent changes arrive as **proposals**. You review the exact postings and approve or reject them in the web interface or inside your agent harness. Nothing reaches the ledger until you approve it.
 
 ## What you get
 

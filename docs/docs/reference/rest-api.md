@@ -6,9 +6,9 @@ title: REST API
 
 The complete CRUD surface, used by people, scripts and harness plugins that act as the user. The service also serves its OpenAPI document at `/openapi.json` and interactive docs at `/docs`.
 
-- **Writes commit at once** for a `user`, with an optional `If-Match` header carrying the last seen ledger version (`412` when stale). Agents are refused (`403`) when approval is required: they use [proposals](../concepts/proposals.md).
-- **Proposals** live under `/ledgers/{ledger_id}/changes`. Approve and reject take a JSON body, which may be `{}`.
-- **Errors** are `{"detail": ...}`: `404` not found, `409` conflict, `412` stale version, `422` invalid, `428` version required, `403` not allowed.
+- Writes from a `user` commit at once. An optional `If-Match` header carries the last seen ledger version and returns `412` when stale. Agents are refused with `403` when approval is required, so they use [proposals](../concepts/proposals.md).
+- Proposals live under `/ledgers/{ledger_id}/changes`. Approve and reject take a JSON body, which may be `{}`.
+- Errors use `{"detail": ...}`. The status codes are `404` not found, `409` conflict, `412` stale version, `422` invalid, `428` version required and `403` not allowed.
 - The browser interface under `/ui/` is not part of this API.
 
 ## Accounts

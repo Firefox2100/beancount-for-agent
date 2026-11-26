@@ -17,9 +17,9 @@ title: Architecture
                        ledger files
 ```
 
-- **Async backend.** Service code is async. Blocking Beancount work (parsing, booking, file I/O) runs in a worker thread and never blocks the event loop.
-- **Pydantic** is the data model for every input, output and domain object at the service boundary. Raw Beancount directive objects do not cross it.
-- **The service layer is the single home of business logic.** FastAPI handlers, MCP tools and the web interface are thin adapters over the same services, with no logic and no divergent behaviour.
+- Service code is async. Blocking Beancount work (parsing, booking and file I/O) runs in a worker thread and never blocks the event loop.
+- Pydantic models every input, output and domain object at the service boundary. Raw Beancount directive objects do not cross it.
+- Business logic lives in the service layer. FastAPI handlers, MCP tools and the web interface are thin adapters over the same services, with no divergent behaviour.
 - Keep the layers separate: models, ledger engine, services, transports. Transports know nothing about Beancount internals.
 
 ## Repository layout
@@ -40,10 +40,10 @@ title: Architecture
 
 ## Surfaces
 
-- **REST API** (`api/`): the complete CRUD surface for people and plugins acting as the user.
-- **Agent API** (`api/routers/agent.py`): the intent operations, as `AgentService` exposes them, for native plugins. It always acts as an agent and can only propose.
-- **MCP** (`mcp_server/`): the same operations as tools, over streamable HTTP, mounted at `/mcp` in the same ASGI app.
-- **Web interface** (`ui/`): approvals and the settings only a person should change.
+- The REST API (`api/`) is the complete CRUD surface for people and plugins acting as the user.
+- The agent API (`api/routers/agent.py`) exposes `AgentService` intent operations to native plugins. It always acts as an agent and can only propose.
+- MCP (`mcp_server/`) exposes the same operations as tools over streamable HTTP, mounted at `/mcp` in the same ASGI app.
+- The web interface (`ui/`) handles approvals and settings that only a person should change.
 
 `AgentService` holds the intent logic (account matching, choosing the recipe from the account's type, lenient amounts). A new agent operation is added there first, then to both adapters, and the contract is regenerated.
 
