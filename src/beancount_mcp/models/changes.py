@@ -4,7 +4,7 @@ from typing import Literal
 
 from typing import Any
 
-from pydantic import BaseModel, model_validator
+from pydantic import Field, BaseModel, model_validator
 
 from beancount_mcp.models.common import AccountName, Text
 from beancount_mcp.models.operations import Operation
@@ -53,6 +53,7 @@ class SubmitChangeRequest(BaseModel):
     operation: Operation | None = None
     action: ActionRequest | None = None
     note: Text | None = None
+    receipts: list[str] = Field(default_factory=list, description="Stored receipts to attach to the transaction this records, by path.")
 
     @model_validator(mode="after")
     def _exactly_one(self):

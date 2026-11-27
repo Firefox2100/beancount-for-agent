@@ -208,3 +208,59 @@ def test_statements_are_uploaded_reviewed_and_removed_in_the_interface(client, l
     assert forged.status_code == 403
     gone = post(client, f"/ui/ledgers/main/imports/{import_id}/delete")
     assert "Statement removed" in followed(client, gone) and client.get("/ui/ledgers/main/imports").text.count("checking.ofx") == 0
+
+
+def test_recurring_items_are_added_adopted_and_removed_in_the_interface(client, ledger):
+    import datetime as dt
+    page = client.get("/ui/ledgers/main/recurring")
+    assert page.status_code == 200 and "Nothing is scheduled yet." in page.text
+    start = (dt.date.today() - dt.timedelta(days=40)).isoformat()
+    sent = post(client, "/ui/ledgers/main/recurring", title="Rent", from_account="Assets:Bank", to_account="Expenses:Food",
+                number="1200", currency="usd", every="month", interval="1", start=start, payee="Landlord", end="")
+    listed = followed(client, sent)
+    assert "Saved Rent." in listed and "every month on the" in listed and "1,200 USD" in listed and "overdue" in listed
+    assert "Scheduled" in client.get("/ui/ledgers/main/overview").text
+    bad = post(client, "/ui/ledgers/main/recurring", title="", from_account="Assets:Bank", to_account="Expenses:Food", number="1", currency="USD", start=start)
+    assert "give it a title" in followed(client, bad)
+    assert "no longer in the history" in followed(client, post(client, "/ui/ledgers/main/recurring/suggestions/nothing"))
+    assert "Removed." in followed(client, post(client, "/ui/ledgers/main/recurring/rent/delete"))
+
+
+def test_reports_page_shows_totals_by_account_and_explains_a_bad_period(client, ledger):
+    client.post("/ledgers/main/transactions", json={"date": "2026-02-03", "narration": "x", "postings": [
+        {"account": "Expenses:Food", "units": {"number": "1234.50", "currency": "USD"}}, {"account": "Assets:Bank"}]})
+    page = client.get("/ui/ledgers/main/reports", params={"start": "2026-02-01", "end": "2026-02-28", "compare": "on"}).text
+    assert "Expenses:Food" in page and "1,234.50 USD" in page and "Before" in page and "By month" in page
+    assert "starts after it ends" in client.get("/ui/ledgers/main/reports", params={"start": "2026-03-01", "end": "2026-02-01"}).text
+    assert "Reports" in client.get("/ui/").text
+    assert client.get("/ui/ledgers/main/reports").status_code == 200
+
+
+def test_budgets_are_added_adopted_shown_with_progress_and_removed(client, ledger):
+    import datetime as dt
+    page = client.get("/ui/ledgers/main/budgets")
+    assert page.status_code == 200 and "No budgets yet." in page.text
+    client.post("/ledgers/main/transactions", json={"date": dt.date.today().isoformat(), "narration": "x", "postings": [
+        {"account": "Expenses:Food", "units": {"number": "1500", "currency": "USD"}}, {"account": "Assets:Bank"}]})
+    saved = followed(client, post(client, "/ui/ledgers/main/budgets", account="Expenses:Food", number="1000", currency="usd", every="month", start_day="1"))
+    assert "Saved the budget for Expenses:Food." in saved and "over" in saved and "-500.00" in saved and "1,000 USD per month" in saved
+    assert "Budgets to watch" in client.get("/ui/ledgers/main/overview").text
+    bad = followed(client, post(client, "/ui/ledgers/main/budgets", account="Assets:Bank", number="5", currency="USD"))
+    assert "under Expenses" in bad
+    assert "gone" in followed(client, post(client, "/ui/ledgers/main/budgets/suggestions/nothing"))
+    assert "Removed." in followed(client, post(client, "/ui/ledgers/main/budgets/food/delete"))
+
+
+def test_goals_are_added_shown_with_progress_and_removed_and_the_overview_lists_findings(client, ledger):
+    import datetime as dt
+    client.post("/ledgers/main/accounts", json={"account": "Assets:Savings", "date": "2025-01-01"})
+    client.post("/ledgers/main/transactions", json={"date": dt.date.today().isoformat(), "narration": "x", "postings": [
+        {"account": "Assets:Savings", "units": {"number": "1250", "currency": "USD"}}, {"account": "Assets:Bank"}]})
+    page = client.get("/ui/ledgers/main/goals")
+    assert page.status_code == 200 and "No goals yet." in page.text
+    saved = followed(client, post(client, "/ui/ledgers/main/goals", title="Holiday", accounts="Assets:Savings", target="5000", currency="usd", by="", monthly=""))
+    assert "Saved Holiday." in saved and "1,250.00 saved of 5,000 USD" in saved and "25.00% saved" in saved
+    assert "give it a title" in followed(client, post(client, "/ui/ledgers/main/goals", title="", accounts="Assets:Savings", target="1", currency="USD"))
+    assert "under Assets" in followed(client, post(client, "/ui/ledgers/main/goals", title="X", accounts="Expenses:Food", target="1", currency="USD"))
+    assert "Worth a look" in client.get("/ui/ledgers/main/overview").text
+    assert "Removed." in followed(client, post(client, "/ui/ledgers/main/goals/holiday/delete"))

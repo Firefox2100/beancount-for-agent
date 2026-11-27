@@ -4,7 +4,13 @@ import datetime as dt
 from collections import defaultdict
 from decimal import Decimal
 
-from beancount_mcp.ledger import views
+from beancount.core import prices
+
+from beancount_mcp.ledger import budgets as budget_logic
+from beancount_mcp.ledger import checks as check_logic
+from beancount_mcp.ledger import goals as goal_logic
+from beancount_mcp.ledger import recurring, reports, views
+from beancount_mcp.ledger.conversion import Rates
 from beancount_mcp.ledger.errors import RecipeError
 from beancount_mcp.ledger.profile import ProfileStore
 from beancount_mcp.ledger.store import LedgerStore
@@ -12,6 +18,11 @@ from beancount_mcp.models.views import (
     AllocationItem, DueItem, FinancialPosition, OpenItems, PoolStatus, PositionPoint,
     PositionTotal, ReferenceRateStatus, ReferenceValue,
 )
+from beancount_mcp.models.checks import Finding
+from beancount_mcp.models.goals import GoalStatus
+from beancount_mcp.models.budgets import Budget, BudgetStatus, BudgetSuggestion
+from beancount_mcp.models.reports import IncomeStatement
+from beancount_mcp.models.recurring import RecurringStatus, RecurringSuggestion
 from beancount_mcp.services.reference_rates import RateResult, ReferenceRateService
 
 
@@ -35,6 +46,38 @@ class ViewService:
         self, ledger_id: str, interval: str, points: int, today: dt.date | None = None
     ) -> FinancialPosition:
         return await asyncio.to_thread(self._financial_position, ledger_id, interval, points, today or dt.date.today())
+
+    async def recurring(
+        self, ledger_id: str, within_days: int, lookback_days: int, today: dt.date | None = None
+    ) -> list[RecurringStatus]:
+        return await asyncio.to_thread(self._recurring, ledger_id, within_days, lookback_days, today or dt.date.today())
+
+    async def recurring_suggestions(self, ledger_id: str, today: dt.date | None = None) -> list[RecurringSuggestion]:
+        return await asyncio.to_thread(self._suggestions, ledger_id, today or dt.date.today())
+
+    async def income_statement(
+        self, ledger_id: str, start: dt.date | None, end: dt.date | None, depth: int | None, account: str | None,
+        interval: str | None, compare: bool, today: dt.date | None = None,
+    ) -> IncomeStatement:
+        today = today or dt.date.today()
+        start, end = start or today.replace(day=1), end or today
+        if start > end:
+            raise RecipeError(f"the period starts after it ends ({start} to {end})")
+        if depth is None:
+            depth = account.count(":") + 2 if account else 2
+        return await asyncio.to_thread(self._income_statement, ledger_id, start, end, depth, account, interval, compare)
+
+    async def budgets(self, ledger_id: str, today: dt.date | None = None) -> list[BudgetStatus]:
+        return await asyncio.to_thread(self._budgets, ledger_id, today or dt.date.today())
+
+    async def budget_suggestions(self, ledger_id: str, today: dt.date | None = None) -> list[BudgetSuggestion]:
+        return await asyncio.to_thread(self._budget_suggestions, ledger_id, today or dt.date.today())
+
+    async def goals(self, ledger_id: str, today: dt.date | None = None) -> list[GoalStatus]:
+        return await asyncio.to_thread(self._goals, ledger_id, today or dt.date.today())
+
+    async def checks(self, ledger_id: str, stale_days: int, today: dt.date | None = None) -> list[Finding]:
+        return await asyncio.to_thread(self._checks, ledger_id, stale_days, today or dt.date.today())
 
     async def reference_rate_status(self) -> ReferenceRateStatus:
         return await asyncio.to_thread(self._rates.status)
@@ -61,6 +104,79 @@ class ViewService:
         ledger = self._store.open(ledger_id)
         profile = ProfileStore(ledger.root).load()[0]
         return views.due_items(ledger.load()[0], ledger.accounts(), profile, today, within_days)
+
+    def _recurring(self, ledger_id: str, within_days: int, lookback_days: int, today: dt.date) -> list[RecurringStatus]:
+        ledger = self._store.open(ledger_id)
+        profile = ProfileStore(ledger.root).load()[0]
+        transactions = ledger.transactions()
+        items = [recurring.status(rid, item, transactions, today, within_days, lookback_days) for rid, item in profile.recurring.items()]
+        return sorted(items, key=lambda s: (s.occurrences[0].date if s.occurrences else dt.date.max, s.id))
+
+    def _suggestions(self, ledger_id: str, today: dt.date) -> list[RecurringSuggestion]:
+        ledger = self._store.open(ledger_id)
+        profile = ProfileStore(ledger.root).load()[0]
+        return recurring.suggest(ledger.transactions(), profile.recurring, today)
+
+    def _income_statement(self, ledger_id, start, end, depth, account, interval, compare) -> IncomeStatement:
+        ledger = self._store.open(ledger_id)
+        if account is not None and not any(a.name == account or a.name.startswith(account + ":") for a in ledger.accounts()):
+            raise RecipeError(f"no account or group {account!r}")
+        return reports.income_statement(ledger.load()[0], ledger_id, start, end, depth, account, interval, compare)
+
+    def _budgets(self, ledger_id: str, today: dt.date) -> list[BudgetStatus]:
+        ledger = self._store.open(ledger_id)
+        profile = ProfileStore(ledger.root).load()[0]
+        entries = ledger.load()[0]
+        order = {"over": 0, "ahead": 1, "ok": 2}
+        found = [budget_logic.status(bid, budget, entries, today, self._budget_rates(entries, budget, today)) for bid, budget in profile.budgets.items()]
+        return sorted(found, key=lambda s: (order[s.state], s.id))
+
+    def _rates_into(self, entries: list, base: str, currencies: set[str], today: dt.date) -> Rates:
+        """What one unit of each currency is worth in `base` today, for references that count several currencies as one.
+
+        The reference rates come first, then the ledger's own price directives. A currency with neither is left out,
+        and whoever asked lists its amounts separately.
+        """
+        quotes = currencies - {base}
+        if not quotes:
+            return {}
+        found: Rates = {currency: (rate, "reference") for currency, rate in self._rates.rates(base, quotes, today).rates.items()}
+        price_map = None
+        for currency in quotes - found.keys():
+            price_map = price_map or prices.build_price_map(entries)
+            _, rate = prices.get_price(price_map, (currency, base), today)
+            if rate is not None:
+                found[currency] = (Decimal(rate), "ledger")
+        return found
+
+    def _budget_rates(self, entries: list, budget: Budget, today: dt.date) -> Rates:
+        start = budget_logic.period_of(budget, today)[0]
+        spent = budget_logic.spent(entries, budget.account, min(start, today - dt.timedelta(days=100)), today)
+        return self._rates_into(entries, budget.amount.currency, set(spent), today)
+
+    def _goals(self, ledger_id: str, today: dt.date) -> list[GoalStatus]:
+        ledger = self._store.open(ledger_id)
+        profile = ProfileStore(ledger.root).load()[0]
+        balances = {row.account: {c: Decimal(n) for c, n in row.balances.items()} for row in ledger.balances(today)}
+        entries = ledger.load()[0]
+        found = []
+        for gid, goal in profile.goals.items():
+            held = goal_logic.holdings(balances, goal)
+            rates = self._rates_into(entries, goal.target.currency, set(held), today)
+            found.append(goal_logic.status(gid, goal, balances, today, rates))
+        order = {"behind": 0, "on_track": 1, "open": 2, "reached": 3}
+        return sorted(found, key=lambda s: (order[s.state], s.by or dt.date.max, s.id))
+
+    def _checks(self, ledger_id: str, stale_days: int, today: dt.date) -> list[Finding]:
+        ledger = self._store.open(ledger_id)
+        entries = ledger.load()[0]
+        balances = {row.account: {c: Decimal(n) for c, n in row.balances.items()} for row in ledger.balances(today)}
+        return check_logic.checks(entries, ledger.accounts(), balances, ledger.status().errors, today, stale_days)
+
+    def _budget_suggestions(self, ledger_id: str, today: dt.date) -> list[BudgetSuggestion]:
+        ledger = self._store.open(ledger_id)
+        profile = ProfileStore(ledger.root).load()[0]
+        return budget_logic.suggest(ledger.load()[0], profile.budgets, today)
 
     def _pools(self, ledger_id: str, today: dt.date) -> list[PoolStatus]:
         ledger = self._store.open(ledger_id)

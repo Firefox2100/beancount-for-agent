@@ -1,4 +1,5 @@
 import asyncio
+import datetime as dt
 import hmac
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
@@ -19,7 +20,11 @@ from beancount_mcp.models import (
     Pool,
     SetAccountDetails,
 )
+from beancount_mcp.ledger.recurring import slug
+from beancount_mcp.models.budgets import Budget
 from beancount_mcp.models.common import Amount
+from beancount_mcp.models.goals import Goal
+from beancount_mcp.models.recurring import Recurring
 from beancount_mcp.models.details import DETAIL_FIELDS, SENSITIVE_FIELDS
 from beancount_mcp.ui.present import describe, grouped, held, line_chart
 from beancount_mcp.ui.session import COOKIE, SESSION_SECONDS, UiAuth
@@ -184,6 +189,201 @@ async def resolve(request: Request, ledger: str, change_id: str, verb: str, form
     return back("/ui/", f"{'Approved' if verb == 'approve' else 'Rejected'} {change_id}.")
 
 
+@protected.get("/ledgers/{ledger}/receipts")
+async def receipts_page(request: Request, ledger: str):
+    ledgers, _, _ = _services(request)
+    service = request.app.state.receipt_service
+    recent = (await ledgers.list_transactions(ledger, limit=100_000)).items[-40:]
+    return render(request, "receipts.html", ledger=ledger, items=await service.listing(ledger), recent=list(reversed(recent)), access=service.access)
+
+
+@protected.post("/ledgers/{ledger}/receipts")
+async def upload_receipt(request: Request, ledger: str, cookie: str | None = Depends(session)):
+    fields, files = _verified(request, cookie, await request.form())
+    service = request.app.state.receipt_service
+    path = f"/ui/ledgers/{ledger}/receipts"
+    upload = files.get("file")
+    if upload is None or not getattr(upload, "filename", ""):
+        return back(path, "Choose a receipt first.", "error")
+    try:
+        receipt = await service.upload(ledger, upload.filename, await upload.read(service.max_bytes + 1), USER)
+        if fields.get("transaction"):
+            await service.attach(ledger, fields["transaction"], receipt.path, USER)
+    except LedgerStoreError as exc:
+        return back(path, str(exc), "error")
+    return back(path, f"Stored {receipt.name}" + (" and linked it." if fields.get("transaction") else "."))
+
+
+@protected.post("/ledgers/{ledger}/receipts/attach")
+async def attach_receipt(request: Request, ledger: str, form: dict = Depends(checked_form)):
+    path = f"/ui/ledgers/{ledger}/receipts"
+    try:
+        await request.app.state.receipt_service.attach(ledger, form.get("transaction", ""), form.get("path", ""), USER)
+    except LedgerStoreError as exc:
+        return back(path, str(exc), "error")
+    return back(path, "Linked.")
+
+
+@protected.get("/ledgers/{ledger}/receipts/file")
+async def receipt_file(request: Request, ledger: str, path: str):
+    try:
+        content, media_type = await request.app.state.receipt_service.file(ledger, path)
+    except LedgerStoreError as exc:
+        raise HTTPException(404, str(exc)) from None
+    return Response(content, media_type=media_type, headers={"X-Content-Type-Options": "nosniff", "Content-Security-Policy": "sandbox"})
+
+
+@protected.get("/ledgers/{ledger}/goals")
+async def goals_page(request: Request, ledger: str):
+    ledgers, _, _ = _services(request)
+    accounts = sorted({":".join(a.name.split(":")[:depth]) for a in await ledgers.list_accounts(ledger)
+                       if a.close_date is None and a.name.startswith("Assets") for depth in (2, len(a.name.split(":")))})
+    return render(request, "goals.html", ledger=ledger, items=await request.app.state.view_service.goals(ledger), accounts=accounts)
+
+
+@protected.post("/ledgers/{ledger}/goals")
+async def add_goal(request: Request, ledger: str, form: dict = Depends(checked_form)):
+    _, _, profiles = _services(request)
+    path = f"/ui/ledgers/{ledger}/goals"
+    try:
+        currency = form.get("currency", "").strip().upper()
+        monthly = _text(form, "monthly")
+        goal = Goal(
+            title=form.get("title", "").strip(),
+            accounts=[name.strip() for name in form.get("accounts", "").replace("\n", ",").split(",") if name.strip()],
+            target=Amount(number=Decimal(form.get("target", "").strip() or "0"), currency=currency),
+            by=_text(form, "by"), monthly=Amount(number=Decimal(monthly), currency=currency) if monthly else None,
+        )
+        if not goal.title:
+            raise ValueError("give it a title")
+        await profiles.set_goal(ledger, slug(goal.title), goal, USER)
+    except (ValidationError, LedgerStoreError, InvalidOperation, ValueError) as exc:
+        return back(path, _problem(exc), "error")
+    return back(path, f"Saved {goal.title}.")
+
+
+@protected.post("/ledgers/{ledger}/goals/{goal}/delete")
+async def delete_goal(request: Request, ledger: str, goal: str, form: dict = Depends(checked_form)):
+    _, _, profiles = _services(request)
+    await profiles.set_goal(ledger, goal, None, USER)
+    return back(f"/ui/ledgers/{ledger}/goals", "Removed.")
+
+
+@protected.get("/ledgers/{ledger}/budgets")
+async def budgets_page(request: Request, ledger: str):
+    ledgers, _, _ = _services(request)
+    views = request.app.state.view_service
+    groups = sorted({":".join(a.name.split(":")[:depth]) for a in await ledgers.list_accounts(ledger)
+                     if a.close_date is None and a.name.startswith("Expenses") for depth in (1, 2, len(a.name.split(":")))})
+    return render(request, "budgets.html", ledger=ledger, today_ordinal=dt.date.today().toordinal(), items=await views.budgets(ledger), groups=groups,
+                  suggestions=await views.budget_suggestions(ledger))
+
+
+@protected.post("/ledgers/{ledger}/budgets")
+async def add_budget(request: Request, ledger: str, form: dict = Depends(checked_form)):
+    _, _, profiles = _services(request)
+    path = f"/ui/ledgers/{ledger}/budgets"
+    try:
+        budget = Budget(
+            account=form.get("account", "").strip(),
+            amount=Amount(number=Decimal(form.get("number", "").strip() or "0"), currency=form.get("currency", "").strip().upper()),
+            every=form.get("every", "month"), start_day=int(form.get("start_day") or 1),
+        )
+        await profiles.set_budget(ledger, slug(budget.account.removeprefix("Expenses:").removeprefix("Expenses") or "expenses"), budget, USER)
+    except (ValidationError, LedgerStoreError, InvalidOperation, ValueError) as exc:
+        return back(path, _problem(exc), "error")
+    return back(path, f"Saved the budget for {budget.account}.")
+
+
+@protected.post("/ledgers/{ledger}/budgets/suggestions/{suggestion}")
+async def adopt_budget(request: Request, ledger: str, suggestion: str, form: dict = Depends(checked_form)):
+    """Adopt a suggested budget. It is looked up again here, so nothing the browser sends is trusted."""
+    _, _, profiles = _services(request)
+    found = next((s for s in await request.app.state.view_service.budget_suggestions(ledger) if s.id == suggestion), None)
+    path = f"/ui/ledgers/{ledger}/budgets"
+    if found is None:
+        return back(path, "That suggestion is gone.", "error")
+    await profiles.set_budget(ledger, found.id, found.budget, USER)
+    return back(path, f"Added a budget for {found.budget.account}.")
+
+
+@protected.post("/ledgers/{ledger}/budgets/{budget}/delete")
+async def delete_budget(request: Request, ledger: str, budget: str, form: dict = Depends(checked_form)):
+    _, _, profiles = _services(request)
+    await profiles.set_budget(ledger, budget, None, USER)
+    return back(f"/ui/ledgers/{ledger}/budgets", "Removed.")
+
+
+@protected.get("/ledgers/{ledger}/reports")
+async def reports_page(request: Request, ledger: str, start: str = "", end: str = "", interval: str = "month", compare: str = "", account: str = ""):
+    """Income and expenses over a period, from the same view the agent's report tool reads."""
+    try:
+        first = dt.date.fromisoformat(start) if start else None
+        last = dt.date.fromisoformat(end) if end else None
+        report = await request.app.state.view_service.income_statement(
+            ledger, first, last, None, account.strip() or None, interval if interval in ("week", "month") else None, compare == "on",
+        )
+        problem = None
+    except (ValueError, LedgerStoreError) as exc:
+        report, problem = None, str(exc)
+    today = dt.date.today()
+    last_month_end = today.replace(day=1) - dt.timedelta(days=1)
+    presets = [
+        ("This month", today.replace(day=1), today), ("Last month", last_month_end.replace(day=1), last_month_end),
+        ("Last 90 days", today - dt.timedelta(days=89), today), ("This year", today.replace(month=1, day=1), today),
+    ]
+    return render(request, "reports.html", ledger=ledger, report=report, problem=problem, presets=presets,
+                  form={"start": start or (report.start.isoformat() if report else ""), "end": end or (report.end.isoformat() if report else ""),
+                        "interval": interval, "compare": compare == "on", "account": account})
+
+
+@protected.get("/ledgers/{ledger}/recurring")
+async def recurring_page(request: Request, ledger: str):
+    ledgers, _, _ = _services(request)
+    views = request.app.state.view_service
+    accounts = sorted(a.name for a in await ledgers.list_accounts(ledger) if a.close_date is None)
+    return render(request, "recurring.html", ledger=ledger, accounts=accounts,
+                  items=await views.recurring(ledger, 30, 60), suggestions=await views.recurring_suggestions(ledger))
+
+
+@protected.post("/ledgers/{ledger}/recurring")
+async def add_recurring(request: Request, ledger: str, form: dict = Depends(checked_form)):
+    _, _, profiles = _services(request)
+    path = f"/ui/ledgers/{ledger}/recurring"
+    try:
+        item = Recurring(
+            title=form.get("title", "").strip(), from_account=form.get("from_account", ""), to_account=form.get("to_account", ""),
+            amount=Amount(number=Decimal(form.get("number", "").strip() or "0"), currency=form.get("currency", "").strip().upper()),
+            every=form.get("every", "month"), interval=int(form.get("interval") or 1), start=form.get("start", ""),
+            end=_text(form, "end"), payee=_text(form, "payee"), variable=form.get("variable") == "on",
+        )
+        if not item.title:
+            raise ValueError("give it a title")
+        await profiles.set_recurring(ledger, slug(item.title), item, USER)
+    except (ValidationError, LedgerStoreError, InvalidOperation, ValueError) as exc:
+        return back(path, _problem(exc), "error")
+    return back(path, f"Saved {item.title}.")
+
+
+@protected.post("/ledgers/{ledger}/recurring/suggestions/{suggestion}")
+async def adopt_suggestion(request: Request, ledger: str, suggestion: str, form: dict = Depends(checked_form)):
+    """Adopt a pattern found in the history. It is looked up again here, so nothing the browser sends is trusted."""
+    _, _, profiles = _services(request)
+    found = next((s for s in await request.app.state.view_service.recurring_suggestions(ledger) if s.id == suggestion), None)
+    path = f"/ui/ledgers/{ledger}/recurring"
+    if found is None:
+        return back(path, "That pattern is no longer in the history.", "error")
+    await profiles.set_recurring(ledger, found.id, found.recurring, USER)
+    return back(path, f"Added {found.recurring.title}.")
+
+
+@protected.post("/ledgers/{ledger}/recurring/{item}/delete")
+async def delete_recurring(request: Request, ledger: str, item: str, form: dict = Depends(checked_form)):
+    _, _, profiles = _services(request)
+    await profiles.set_recurring(ledger, item, None, USER)
+    return back(f"/ui/ledgers/{ledger}/recurring", "Removed.")
+
+
 @protected.get("/ledgers/{ledger}/imports")
 async def imports_page(request: Request, ledger: str):
     ledgers, _, _ = _services(request)
@@ -244,6 +444,9 @@ async def overview(request: Request, ledger: str, interval: str = "month"):
     accounts = [a for a in await ledgers.list_accounts(ledger) if a.close_date is None]
     balances = {b.account: b.balances for b in await ledgers.balances(ledger, None)}
     due = await views.due(ledger, None, None)
+    scheduled = [item for item in await views.recurring(ledger, 14, 45) if item.occurrences]
+    watched = [b for b in await views.budgets(ledger) if b.state != "ok"]
+    findings = await views.checks(ledger, 45)
     try:
         position, problem = await views.financial_position(ledger, interval, 12), None
     except Exception as exc:  # the valuation is optional; the rest of the page must still show
@@ -266,7 +469,7 @@ async def overview(request: Request, ledger: str, interval: str = "month"):
         })
     chart = line_chart(position.points, ("assets", "liabilities", "net")) if position else {}
     return render(request, "overview.html", ledger=ledger, interval=interval, position=position, problem=problem,
-                  chart=chart, roots=roots, due=due, latest=position.points[-1] if position and position.points else None)
+                  chart=chart, roots=roots, due=due, scheduled=scheduled, watched=watched, findings=findings, latest=position.points[-1] if position and position.points else None)
 
 
 @protected.post("/ledgers/{ledger}/reference-rates/refresh")

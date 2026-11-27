@@ -12,6 +12,7 @@ from beancount import loader
 from beancount_mcp.ledger import read
 from beancount_mcp.ledger.edit import apply_operation
 from beancount_mcp.ledger.errors import ChangeRejected, StaleVersion
+from beancount_mcp.ledger.receipts import DOCUMENTS_DIR
 from beancount_mcp.ledger.layout import MAIN_FILE, SIDECAR_DIR
 from beancount_mcp.models import (
     AccountBalance,
@@ -95,11 +96,11 @@ class Ledger:
         return None if entry is None else read.to_transaction(entry)
 
     def records(self, **filters) -> list[Record]:
-        return read.list_records(self.load()[0], **filters)
+        return read.list_records(self.load()[0], root=self.root, **filters)
 
     def record(self, identifier: str) -> Record | None:
         entry = read.find_record(self.load()[0], identifier)
-        return None if entry is None else read.to_record(entry)
+        return None if entry is None else read.to_record(entry, self.root)
 
     def fingerprint(self, identifier: str) -> str | None:
         """Content hash of the transaction or record with this id, if it exists."""
@@ -143,6 +144,10 @@ class Ledger:
             return AppliedChange(version=self.version(), **touched)
 
     def _copy_to(self, stage: Path) -> None:
+        documents = self.root / DOCUMENTS_DIR
+        if documents.is_dir():
+            # Linked files are not copied: the stage only has to see them, so a missing file is still an error.
+            (stage / DOCUMENTS_DIR).symlink_to(documents, target_is_directory=True)
         for path in self.ledger_files():
             target = stage / path.relative_to(self.root)
             target.parent.mkdir(parents=True, exist_ok=True)

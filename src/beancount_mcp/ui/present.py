@@ -10,6 +10,7 @@ class Block:
     title: str
     postings: list[tuple[str, str]] = field(default_factory=list)
     lines: list[str] = field(default_factory=list)
+    receipt: str | None = None
 
 
 def grouped(value) -> str:
@@ -70,6 +71,11 @@ def describe(operation: Operation) -> list[Block]:
             return [Block(f"{verb}: {head}", postings, [f"#{tag}" for tag in t.tags] + [f"^{link}" for link in t.links])]
         case "batch":
             return [block for member in operation.operations for block in describe(member)]
+        case "add_directive" if operation.directive.kind == "document":
+            name = operation.directive.path.rsplit("/", 1)[-1]
+            return [Block(f"Attach receipt {name} to {operation.directive.account}", receipt=operation.directive.path)]
+        case "attach_receipt":
+            return [Block(f"Attach receipt {operation.path.rsplit('/', 1)[-1]} to {operation.id}", receipt=operation.path)]
         case "open_account":
             lines = [f"currencies: {', '.join(operation.currencies)}"] if operation.currencies else []
             if operation.type:

@@ -21,10 +21,15 @@ The agent API serves the [MCP tools](mcp-tools.md)' operations over HTTP, for ha
 | `POST` | `/agent/accounts/open` | Open Account |
 | `POST` | `/agent/actions` | Propose a recipe action on an account. `params` follows the schema from `/agent/recipes`. |
 | `GET` | `/agent/balances` | Balances |
+| `GET` | `/agent/budgets` | Budgets with spent, remaining, pace and projection for the current period. Over budget first. |
+| `GET` | `/agent/budgets/suggestions` | Budgets the history suggests for expense groups without one. Only the user can add a budget. |
+| `GET` | `/agent/capabilities` | What this deployment lets an agent do beyond the basics, so a plugin shows only the tools that can work. |
+| `GET` | `/agent/checks` | Things in the books worth a look. Nothing here changes the ledger. |
 | `GET` | `/agent/credit-pools` | Credit Pools |
 | `GET` | `/agent/due` | Due |
 | `POST` | `/agent/expenses` | Record Expense |
 | `GET` | `/agent/financial-position` | Financial Position |
+| `GET` | `/agent/goals` | Savings goals: saved, remaining and, with a deadline, what to put aside each month. Behind first. |
 | `GET` | `/agent/imports` | Statements the user has uploaded, with how many of their lines are still new. |
 | `GET` | `/agent/imports/{import_id}` | One uploaded statement, each line marked new, already imported or a possible duplicate. |
 | `POST` | `/agent/imports/{import_id}/proposal` | Propose the new lines of a statement as one batch for the user to approve. |
@@ -34,9 +39,14 @@ The agent API serves the [MCP tools](mcp-tools.md)' operations over HTTP, for ha
 | `GET` | `/agent/open-items` | Open Items |
 | `GET` | `/agent/proposals` | Proposals made by this client. Other clients' drafts are not shown. |
 | `POST` | `/agent/proposals/{change_id}/withdraw` | Withdraw |
+| `GET` | `/agent/receipts/read` | The text of a receipt the user stored, read on first use and kept. `receipt` is its path, its file name or the id of a transaction with one receipt. |
 | `GET` | `/agent/recipes` | Recipes |
 | `POST` | `/agent/reconciliations` | Reconcile |
+| `GET` | `/agent/recurring` | Recurring items with what is overdue or coming up and not yet recorded. |
+| `GET` | `/agent/recurring/suggestions` | Repeating payments in the history that no recurring item covers. Only the user can add an item. |
+| `POST` | `/agent/recurring/{item_id}/proposal` | Propose recording one occurrence of a recurring item. |
 | `GET` | `/agent/reference-rates/status` | Reference Rate Status |
+| `GET` | `/agent/reports/income-statement` | Income and expenses over a period (this month so far by default), by account. Drill into a group with `account`. |
 | `GET` | `/agent/transactions` | Transactions |
 | `POST` | `/agent/transactions/{transaction_id}/amend` | Propose correcting a recorded transaction's date, payee, narration or tags. |
 | `POST` | `/agent/transactions/{transaction_id}/deletion` | Propose removing a recorded transaction. |

@@ -12,6 +12,7 @@ from pydantic_core import to_jsonable_python
 
 from beancount_mcp.models.details import for_agent
 from beancount_mcp.ledger.errors import RecipeError
+from beancount_mcp.ledger.recurring import DEFAULT_LOOKBACK_DAYS, DEFAULT_WITHIN_DAYS
 from beancount_mcp.ledger.store import LedgerStore
 from beancount_mcp.models import (
     AccountBalance,
@@ -41,8 +42,14 @@ from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, Po
 from beancount_mcp.recipes.helpers import Money, amount_of
 from beancount_mcp.services.actions import ActionService
 from beancount_mcp.models.imports import ImportReview, ImportSummary
+from beancount_mcp.models.budgets import BudgetStatus, BudgetSuggestion
+from beancount_mcp.models.checks import Finding
+from beancount_mcp.models.goals import GoalStatus
+from beancount_mcp.models.reports import IncomeStatement
+from beancount_mcp.models.recurring import RecurringStatus, RecurringSuggestion
 from beancount_mcp.services.changes import ChangeService
 from beancount_mcp.services.imports import ImportService
+from beancount_mcp.services.receipts import ReceiptAccess, ReceiptService
 from beancount_mcp.services.ledgers import LedgerService
 from beancount_mcp.services.resolve import resolve_account, resolve_params
 from beancount_mcp.services.views import ViewService
@@ -60,6 +67,7 @@ class AgentService:
         actions: ActionService,
         views: ViewService,
         imports: ImportService,
+        receipts: ReceiptService,
     ):
         self._store = store
         self._ledgers = ledgers
@@ -67,6 +75,7 @@ class AgentService:
         self._actions = actions
         self._views = views
         self._imports = imports
+        self._receipts = receipts
 
     async def resolve_ledger(self, ledger: str | None) -> str:
         """The named ledger, or the only one when there is exactly one."""
@@ -150,6 +159,69 @@ class AgentService:
             ledger_id, import_id, categories, default, skip, include, assert_balance, note, caller, version
         )
 
+    async def income_statement(
+        self, ledger: str | None, start: dt.date | None, end: dt.date | None, account: str | None, depth: int | None,
+        interval: str | None, compare: bool,
+    ) -> IncomeStatement:
+        ledger_id = await self.resolve_ledger(ledger)
+        prefix = await self.lookup(ledger_id, account, subtree=True)
+        return await self._views.income_statement(ledger_id, start, end, depth, prefix, interval, compare)
+
+    async def goals(self, ledger: str | None) -> list[GoalStatus]:
+        return await self._views.goals(await self.resolve_ledger(ledger))
+
+    async def checks(self, ledger: str | None, stale_days: int) -> list[Finding]:
+        return await self._views.checks(await self.resolve_ledger(ledger), stale_days)
+
+    async def budgets(self, ledger: str | None) -> list[BudgetStatus]:
+        return await self._views.budgets(await self.resolve_ledger(ledger))
+
+    async def budget_suggestions(self, ledger: str | None) -> list[BudgetSuggestion]:
+        return await self._views.budget_suggestions(await self.resolve_ledger(ledger))
+
+    async def recurring(self, ledger: str | None, within_days: int, lookback_days: int) -> list[RecurringStatus]:
+        return await self._views.recurring(await self.resolve_ledger(ledger), within_days, lookback_days)
+
+    async def recurring_suggestions(self, ledger: str | None) -> list[RecurringSuggestion]:
+        return await self._views.recurring_suggestions(await self.resolve_ledger(ledger))
+
+    async def propose_recurring(
+        self, ledger: str | None, item: str, amount: Money | None, date: dt.date | None, due: dt.date | None,
+        note: str | None, caller: Caller, version: str | None,
+    ) -> PendingChange:
+        """Record one occurrence of a recurring item: the transaction the schedule describes, tied to the date it was due."""
+        ledger_id = await self.resolve_ledger(ledger)
+        statuses = {s.id: s for s in await self._views.recurring(ledger_id, DEFAULT_WITHIN_DAYS, DEFAULT_LOOKBACK_DAYS)}
+        status = statuses.get(item)
+        if status is None:
+            known = ", ".join(sorted(statuses)) or "none are set up"
+            raise RecipeError(f"no recurring item {item!r} (known: {known}). Only the user can add one")
+        if amount is None and status.variable:
+            raise RecipeError(f"{status.title} varies each time: give the amount")
+        money = amount_of(amount, [status.amount.currency], "amount") if amount is not None else status.amount
+        happened = date or dt.date.today()
+        due_date = due or (status.occurrences[0].date if status.occurrences else happened)
+        transaction = TransactionInput(
+            date=happened, payee=status.payee, narration=status.narration or status.title,
+            postings=[
+                Posting(account=status.to_account, units=Amount(number=money.number, currency=money.currency)),
+                Posting(account=status.from_account, units=Amount(number=-money.number, currency=money.currency)),
+            ],
+            meta={"recurring": item, "due": due_date.isoformat()},
+        )
+        return await self.propose_operation(ledger_id, AddTransaction(transaction=transaction), note, caller, version)
+
+    @property
+    def receipt_access(self) -> ReceiptAccess:
+        return self._receipts.access
+
+    async def read_receipt(self, ledger: str | None, reference: str, with_pictures: bool = False):
+        """The text and/or picture of a receipt, as far as this deployment allows."""
+        return await self._receipts.read(await self.resolve_ledger(ledger), reference, with_pictures)
+
+    async def _receipt_paths(self, ledger_id: str, receipt: str | None) -> list[str]:
+        return [await self._receipts.find(ledger_id, receipt)] if receipt else []
+
     async def reference_rate_status(self) -> ReferenceRateStatus:
         return await self._views.reference_rate_status()
 
@@ -170,19 +242,25 @@ class AgentService:
 
     async def propose_action(
         self, ledger: str | None, account: str, recipe: str, params: dict[str, Any], note: str | None,
-        caller: Caller, version: str | None,
+        caller: Caller, version: str | None, receipt: str | None = None,
     ) -> PendingChange:
         ledger_id = await self.resolve_ledger(ledger)
         accounts = await self._ledgers.list_accounts(ledger_id)
         account = resolve_account(accounts, account)
         params = resolve_params(accounts, params)
-        request = SubmitChangeRequest(action=ActionRequest(account=account, recipe=recipe, params=params), note=note)
+        request = SubmitChangeRequest(
+            action=ActionRequest(account=account, recipe=recipe, params=params), note=note,
+            receipts=await self._receipt_paths(ledger_id, receipt),
+        )
         return await self.submit(ledger_id, request, caller, version)
 
     async def propose_operation(
-        self, ledger: str | None, operation: Operation, note: str | None, caller: Caller, version: str | None
+        self, ledger: str | None, operation: Operation, note: str | None, caller: Caller, version: str | None,
+        receipt: str | None = None,
     ) -> PendingChange:
-        return await self.submit(ledger, SubmitChangeRequest(operation=operation, note=note), caller, version)
+        ledger_id = await self.resolve_ledger(ledger)
+        request = SubmitChangeRequest(operation=operation, note=note, receipts=await self._receipt_paths(ledger_id, receipt))
+        return await self.submit(ledger_id, request, caller, version)
 
     async def lookup(self, ledger: str | None, name: str | None, subtree: bool = False) -> str | None:
         """An account named loosely, for read filters. With `subtree`, a bare prefix such as Assets also passes."""
@@ -206,6 +284,7 @@ class AgentService:
     async def expense(
         self, ledger: str | None, from_account: str, expense_account: str, amount: Money,
         date: dt.date | None, payee: str | None, narration: str, note: str | None, caller: Caller, version: str | None,
+        receipt: str | None = None,
     ) -> PendingChange:
         ledger_id = await self.resolve_ledger(ledger)
         from_account = await self._find(ledger_id, from_account, FUNDING_ROOTS)
@@ -214,13 +293,14 @@ class AgentService:
         params = _clean({"expense_account": expense_account, "amount": amount, "date": date, "payee": payee, "narration": narration})
         recipe = "spend" if kind in CASH_KINDS else "purchase" if kind == "credit_card" else None
         if recipe:
-            return await self.propose_action(ledger_id, from_account, recipe, params, note, caller, version)
+            return await self.propose_action(ledger_id, from_account, recipe, params, note, caller, version, receipt)
         money = amount_of(amount, info.currencies, "amount")
-        return await self._plain(ledger_id, date, payee, narration, [(expense_account, money.number), (from_account, -money.number)], money.currency, note, caller, version)
+        return await self._plain(ledger_id, date, payee, narration, [(expense_account, money.number), (from_account, -money.number)], money.currency, note, caller, version, receipt)
 
     async def income(
         self, ledger: str | None, to_account: str, income_account: str, amount: Money,
         date: dt.date | None, payee: str | None, narration: str, note: str | None, caller: Caller, version: str | None,
+        receipt: str | None = None,
     ) -> PendingChange:
         ledger_id = await self.resolve_ledger(ledger)
         to_account = await self._find(ledger_id, to_account, FUNDING_ROOTS)
@@ -228,13 +308,14 @@ class AgentService:
         kind, info = await self._kind(ledger_id, to_account)
         if kind in CASH_KINDS:
             params = _clean({"from_account": income_account, "amount": amount, "date": date, "payee": payee, "narration": narration})
-            return await self.propose_action(ledger_id, to_account, "receive", params, note, caller, version)
+            return await self.propose_action(ledger_id, to_account, "receive", params, note, caller, version, receipt)
         money = amount_of(amount, info.currencies, "amount")
-        return await self._plain(ledger_id, date, payee, narration, [(to_account, money.number), (income_account, -money.number)], money.currency, note, caller, version)
+        return await self._plain(ledger_id, date, payee, narration, [(to_account, money.number), (income_account, -money.number)], money.currency, note, caller, version, receipt)
 
     async def transfer(
         self, ledger: str | None, from_account: str, to_account: str, amount: Money, received: Money | None,
         rate: Any, date: dt.date | None, narration: str, note: str | None, caller: Caller, version: str | None,
+        receipt: str | None = None,
     ) -> PendingChange:
         ledger_id = await self.resolve_ledger(ledger)
         from_account = await self._find(ledger_id, from_account, FUNDING_ROOTS)
@@ -242,20 +323,20 @@ class AgentService:
         kind, info = await self._kind(ledger_id, from_account)
         if kind in CASH_KINDS:
             params = _clean({"to_account": to_account, "amount": amount, "received": received, "rate": rate, "date": date, "narration": narration})
-            return await self.propose_action(ledger_id, from_account, "transfer", params, note, caller, version)
+            return await self.propose_action(ledger_id, from_account, "transfer", params, note, caller, version, receipt)
         if received is not None or rate is not None:
             raise RecipeError(f"{from_account} has no type with currency conversion, set its type to convert on transfer")
         money = amount_of(amount, info.currencies, "amount")
-        return await self._plain(ledger_id, date, None, narration or "Transfer", [(to_account, money.number), (from_account, -money.number)], money.currency, note, caller, version)
+        return await self._plain(ledger_id, date, None, narration or "Transfer", [(to_account, money.number), (from_account, -money.number)], money.currency, note, caller, version, receipt)
 
-    async def _plain(self, ledger_id, date, payee, narration, legs, currency, note, caller, version) -> PendingChange:
+    async def _plain(self, ledger_id, date, payee, narration, legs, currency, note, caller, version, receipt=None) -> PendingChange:
         transaction = TransactionInput(
             date=date or dt.date.today(),
             payee=payee,
             narration=narration,
             postings=[Posting(account=name, units=Amount(number=number, currency=currency)) for name, number in legs],
         )
-        return await self.propose_operation(ledger_id, AddTransaction(transaction=transaction), note, caller, version)
+        return await self.propose_operation(ledger_id, AddTransaction(transaction=transaction), note, caller, version, receipt)
 
     async def pending(self, ledger: str | None, status: ChangeStatus | None, caller: Caller) -> list[PendingChange]:
         """Proposed changes, restricted to this client's own so sessions do not see each other's drafts."""

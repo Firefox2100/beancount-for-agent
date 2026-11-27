@@ -1,10 +1,13 @@
 import datetime as dt
+from typing import Annotated, Literal
 
 from fastapi import APIRouter, Query
 
 from beancount_mcp.api.deps import CallerDep, ViewServiceDep
 from beancount_mcp.ledger.errors import ApprovalRequired
 from beancount_mcp.models.common import AccountName
+from beancount_mcp.models.checks import Finding
+from beancount_mcp.models.reports import IncomeStatement
 from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, PoolStatus, ReferenceRateStatus
 
 router = APIRouter(prefix="/ledgers/{ledger_id}", tags=["views"])
@@ -28,6 +31,29 @@ async def due(
 async def pools(ledger_id: str, service: ViewServiceDep, today: dt.date | None = None) -> list[PoolStatus]:
     """Shared credit limits: used and available, converting with the ledger's price directives."""
     return await service.pools(ledger_id, today)
+
+
+@router.get("/reports/income-statement")
+async def income_statement(
+    ledger_id: str,
+    service: ViewServiceDep,
+    start: dt.date | None = None,
+    end: dt.date | None = None,
+    account: str | None = None,
+    depth: Annotated[int | None, Query(ge=1, le=8)] = None,
+    interval: Literal["week", "month"] | None = None,
+    compare: bool = False,
+) -> IncomeStatement:
+    """Income and expenses over a period (this month so far by default), grouped by account. `compare` adds the equal period before."""
+    return await service.income_statement(ledger_id, start, end, depth, account, interval, compare)
+
+
+@router.get("/checks")
+async def checks(
+    ledger_id: str, service: ViewServiceDep, stale_days: Annotated[int, Query(ge=1, le=366)] = 45, today: dt.date | None = None
+) -> list[Finding]:
+    """Things in the books worth a look: ledger errors, overdrawn accounts, stale balances, likely duplicates, uncategorised entries."""
+    return await service.checks(ledger_id, stale_days, today)
 
 
 @router.get("/financial-position")

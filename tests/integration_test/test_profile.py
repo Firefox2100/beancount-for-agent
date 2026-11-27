@@ -3,7 +3,7 @@ CARD = "Liabilities:Card:Main"
 
 def test_empty_profile_and_roundtrip(client, card_ledger):
     empty = client.get(f"{card_ledger}/profile").json()
-    assert empty["profile"] == {"accounts": {}, "pools": {}} and empty["warnings"] == []
+    assert empty["profile"] == {"accounts": {}, "pools": {}, "recurring": {}, "budgets": {}, "goals": {}} and empty["warnings"] == []
 
     profile = {
         "accounts": {CARD: {"description": "Main dual-currency card", "statement_day": 5, "pool": "shared"}},

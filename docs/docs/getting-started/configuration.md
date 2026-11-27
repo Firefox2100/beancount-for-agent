@@ -16,6 +16,11 @@ Settings are read with `pydantic-settings`. Every variable starts with `BEANCOUN
 | `BEANCOUNT_MCP_MCP_RAW_TRANSACTIONS` | `false` | Also expose a tool that takes raw postings. Off by default, because recipes are safer. |
 | `BEANCOUNT_MCP_AGENT_APPROVAL_REQUIRED` | `true` | Agent changes wait for approval. With `false` they are applied at once and recorded as approved. |
 | `BEANCOUNT_MCP_IMPORT_MAX_BYTES` | `5000000` | The largest statement file that can be uploaded. |
+| `BEANCOUNT_MCP_RECEIPTS_MAX_BYTES` | `15000000` | The largest receipt file that can be uploaded. |
+| `BEANCOUNT_MCP_RECEIPTS_OCR_ENABLED` | `false` | Let agents read receipts as text: a PDF's own text, and OCR of pictures and scanned pages. Needs the `receipts` and `ocr` extras. Off, the agent has no receipt tool and is not told about receipts. |
+| `BEANCOUNT_MCP_RECEIPTS_AGENT_IMAGES` | `false` | Also let agents see the receipt's picture. Separate from OCR because sending an image to a hosted model is a different decision. |
+| `BEANCOUNT_MCP_RECEIPTS_OCR_BACKEND` | `rapidocr` | Which OCR backend reads pictures. Plugins can add others. |
+| `BEANCOUNT_MCP_RECEIPTS_MAX_PAGES` | `10` | Pages of a PDF that are read. |
 | `BEANCOUNT_MCP_REFERENCE_RATES_ENABLED` | `false` | Enable approximate, read-only reference valuations from Frankfurter. These values never drive ledger entries. |
 | `BEANCOUNT_MCP_REFERENCE_RATES_URL` | `https://api.frankfurter.dev/v2` | Frankfurter v2 root. May point to a self-hosted instance. |
 | `BEANCOUNT_MCP_REFERENCE_RATES_FRESH_HOURS` | `24` | How long a fetched rate remains fresh. |

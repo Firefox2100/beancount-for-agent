@@ -20,7 +20,7 @@ CONTRACT_DIR = Path(__file__).resolve().parent.parent / "integrations" / "contra
 def build_contract() -> dict[str, str]:
     """File name to content. Raw transactions stay off: it is an opt-in extra, not the contract."""
     with tempfile.TemporaryDirectory() as data_dir:
-        app = create_app(Settings(data_dir=Path(data_dir), mcp_enabled=True, mcp_raw_transactions=False))
+        app = create_app(Settings(data_dir=Path(data_dir), mcp_enabled=True, mcp_raw_transactions=False, receipts_ocr_enabled=True))
         tools = asyncio.run(_tools(app))
         openapi = app.openapi()
     openapi["info"].pop("version", None)

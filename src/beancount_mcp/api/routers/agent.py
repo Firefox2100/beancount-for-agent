@@ -8,7 +8,7 @@ session and keep it out of what the model sees.
 """
 
 import datetime as dt
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 from fastapi import APIRouter, Depends, Header, Query
 from pydantic import BaseModel, Field
@@ -29,6 +29,12 @@ from beancount_mcp.models import (
 from beancount_mcp.models.common import Rate
 from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, PoolStatus, ReferenceRateStatus
 from beancount_mcp.models.imports import ImportReview, ImportSummary
+from beancount_mcp.models.receipts import ReceiptReading
+from beancount_mcp.models.recurring import RecurringStatus, RecurringSuggestion
+from beancount_mcp.models.budgets import BudgetStatus, BudgetSuggestion
+from beancount_mcp.models.checks import Finding
+from beancount_mcp.models.goals import GoalStatus
+from beancount_mcp.models.reports import IncomeStatement
 from beancount_mcp.recipes.helpers import Money
 
 router = APIRouter(prefix="/agent", tags=["agent"])
@@ -59,6 +65,7 @@ class ExpenseRequest(Proposal):
     date: dt.date | None = None
     payee: str | None = None
     narration: str = ""
+    receipt: str | None = Field(default=None, description="A receipt the user stored, by path or file name, to attach to the entry.")
 
 
 class IncomeRequest(Proposal):
@@ -68,6 +75,7 @@ class IncomeRequest(Proposal):
     date: dt.date | None = None
     payee: str | None = None
     narration: str = ""
+    receipt: str | None = Field(default=None, description="A receipt the user stored, by path or file name, to attach to the entry.")
 
 
 class TransferRequest(Proposal):
@@ -78,6 +86,7 @@ class TransferRequest(Proposal):
     rate: Rate | None = None
     date: dt.date | None = None
     narration: str = ""
+    receipt: str | None = Field(default=None, description="A receipt the user stored, by path or file name, to attach to the entry.")
 
 
 class ReconcileRequest(Proposal):
@@ -103,6 +112,7 @@ class ActionRequest(Proposal):
     account: str
     recipe: str
     params: dict[str, Any]
+    receipt: str | None = Field(default=None, description="A receipt the user stored, by path or file name, to attach to the entry.")
 
 
 class AmendRequest(Proposal):
@@ -188,6 +198,69 @@ async def import_review(
     return await agent.import_review(ledger, import_id, only_new, limit)
 
 
+@router.get("/reports/income-statement")
+async def income_statement(
+    agent: AgentServiceDep, ledger: LedgerQuery = None, start: dt.date | None = None, end: dt.date | None = None,
+    account: str | None = None, depth: Annotated[int | None, Query(ge=1, le=8)] = None,
+    interval: Literal["week", "month"] | None = None, compare: bool = False,
+) -> IncomeStatement:
+    """Income and expenses over a period (this month so far by default), by account. Drill into a group with `account`."""
+    return await agent.income_statement(ledger, start, end, account, depth, interval, compare)
+
+
+@router.get("/goals")
+async def goals(agent: AgentServiceDep, ledger: LedgerQuery = None) -> list[GoalStatus]:
+    """Savings goals: saved, remaining and, with a deadline, what to put aside each month. Behind first."""
+    return await agent.goals(ledger)
+
+
+@router.get("/checks")
+async def checks(agent: AgentServiceDep, ledger: LedgerQuery = None, stale_days: Annotated[int, Query(ge=1, le=366)] = 45) -> list[Finding]:
+    """Things in the books worth a look. Nothing here changes the ledger."""
+    return await agent.checks(ledger, stale_days)
+
+
+@router.get("/budgets")
+async def budgets(agent: AgentServiceDep, ledger: LedgerQuery = None) -> list[BudgetStatus]:
+    """Budgets with spent, remaining, pace and projection for the current period. Over budget first."""
+    return await agent.budgets(ledger)
+
+
+@router.get("/budgets/suggestions")
+async def budget_suggestions(agent: AgentServiceDep, ledger: LedgerQuery = None) -> list[BudgetSuggestion]:
+    """Budgets the history suggests for expense groups without one. Only the user can add a budget."""
+    return await agent.budget_suggestions(ledger)
+
+
+@router.get("/recurring")
+async def recurring(
+    agent: AgentServiceDep, ledger: LedgerQuery = None,
+    within_days: Annotated[int, Query(ge=0, le=366)] = 14, lookback_days: Annotated[int, Query(ge=0, le=366)] = 45,
+) -> list[RecurringStatus]:
+    """Recurring items with what is overdue or coming up and not yet recorded."""
+    return await agent.recurring(ledger, within_days, lookback_days)
+
+
+@router.get("/recurring/suggestions")
+async def recurring_suggestions(agent: AgentServiceDep, ledger: LedgerQuery = None) -> list[RecurringSuggestion]:
+    """Repeating payments in the history that no recurring item covers. Only the user can add an item."""
+    return await agent.recurring_suggestions(ledger)
+
+
+@router.get("/capabilities")
+async def capabilities(agent: AgentServiceDep) -> dict:
+    """What this deployment lets an agent do beyond the basics, so a plugin shows only the tools that can work."""
+    access = agent.receipt_access
+    return {"receipts": {"text": access.text, "images": access.images}}
+
+
+@router.get("/receipts/read")
+async def read_receipt(receipt: str, agent: AgentServiceDep, ledger: LedgerQuery = None) -> ReceiptReading:
+    """The text of a receipt the user stored, read on first use and kept. `receipt` is its path, its file name or the id of a transaction with one receipt."""
+    reading, _ = await agent.read_receipt(ledger, receipt, with_pictures=False)
+    return reading
+
+
 @router.get("/credit-pools")
 async def credit_pools(agent: AgentServiceDep, ledger: LedgerQuery = None) -> list[PoolStatus]:
     return await agent.pools(ledger)
@@ -228,7 +301,7 @@ async def withdraw(change_id: str, request: WithdrawRequest, agent: AgentService
 async def record_expense(request: ExpenseRequest, agent: AgentServiceDep, caller: AgentCaller) -> PendingChange:
     return await agent.expense(
         request.ledger, request.from_account, request.expense_account, request.amount, request.date,
-        request.payee, request.narration, request.note, caller, None,
+        request.payee, request.narration, request.note, caller, None, request.receipt,
     )
 
 
@@ -236,7 +309,7 @@ async def record_expense(request: ExpenseRequest, agent: AgentServiceDep, caller
 async def record_income(request: IncomeRequest, agent: AgentServiceDep, caller: AgentCaller) -> PendingChange:
     return await agent.income(
         request.ledger, request.to_account, request.income_account, request.amount, request.date,
-        request.payee, request.narration, request.note, caller, None,
+        request.payee, request.narration, request.note, caller, None, request.receipt,
     )
 
 
@@ -244,7 +317,7 @@ async def record_income(request: IncomeRequest, agent: AgentServiceDep, caller: 
 async def record_transfer(request: TransferRequest, agent: AgentServiceDep, caller: AgentCaller) -> PendingChange:
     return await agent.transfer(
         request.ledger, request.from_account, request.to_account, request.amount, request.received, request.rate,
-        request.date, request.narration, request.note, caller, None,
+        request.date, request.narration, request.note, caller, None, request.receipt,
     )
 
 
@@ -284,11 +357,23 @@ async def propose_import(import_id: str, request: ImportProposal, agent: AgentSe
     )
 
 
+class RecurringProposal(Proposal):
+    amount: Money | None = Field(default=None, description="Required when the amount varies. Otherwise the item's own amount.")
+    date: dt.date | None = Field(default=None, description="When it happened. Defaults to today.")
+    due: dt.date | None = Field(default=None, description="Which occurrence it settles. Defaults to the earliest one not yet recorded.")
+
+
+@router.post("/recurring/{item_id}/proposal", status_code=201)
+async def propose_recurring(item_id: str, request: RecurringProposal, agent: AgentServiceDep, caller: AgentCaller) -> PendingChange:
+    """Propose recording one occurrence of a recurring item."""
+    return await agent.propose_recurring(request.ledger, item_id, request.amount, request.date, request.due, request.note, caller, None)
+
+
 @router.post("/actions", status_code=201)
 async def perform_action(request: ActionRequest, agent: AgentServiceDep, caller: AgentCaller) -> PendingChange:
     """Propose a recipe action on an account. `params` follows the schema from `/agent/recipes`."""
     return await agent.propose_action(
-        request.ledger, request.account, request.recipe, request.params, request.note, caller, None
+        request.ledger, request.account, request.recipe, request.params, request.note, caller, None, request.receipt
     )
 
 

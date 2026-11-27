@@ -55,6 +55,11 @@ export function createClient(config) {
       body: options.body !== undefined ? JSON.stringify(options.body) : undefined,
       signal: options.signal,
     });
+    return await answer(response);
+  }
+
+  /** @param {Response} response */
+  async function answer(response) {
     const text = await response.text();
     const payload = text ? JSON.parse(text) : null;
     if (!response.ok) throw new ApiError(response.status, payload?.detail ?? payload ?? response.statusText);
@@ -65,6 +70,20 @@ export function createClient(config) {
 
   return {
     request,
+    /**
+     * Store a receipt, as the user: the same upload the web interface makes. The service refuses agents.
+     * @param {string} ledgerId
+     * @param {{ name: string, type: string, bytes: Uint8Array }} file
+     * @param {AbortSignal} [signal]
+     * @returns {Promise<{ path: string, name: string, linked: boolean }>}
+     */
+    uploadReceipt: async (ledgerId, file, signal) => {
+      const form = new FormData();
+      form.set("file", new Blob([file.bytes], { type: file.type }), file.name);
+      // No content type: fetch adds the multipart boundary itself.
+      const response = await doFetch(new URL(`${base}${ledger(ledgerId)}/receipts`), { method: "POST", headers, body: form, signal });
+      return await answer(response);
+    },
     /** @returns {Promise<{ id: string }[]>} */
     ledgers: () => request("GET", "/ledgers"),
     /**

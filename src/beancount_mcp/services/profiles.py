@@ -5,6 +5,9 @@ from beancount_mcp.ledger.errors import ApprovalRequired
 from beancount_mcp.ledger.profile import ProfileStore
 from beancount_mcp.ledger.store import LedgerStore
 from beancount_mcp.models import Caller, Profile, ProfileView
+from beancount_mcp.models.budgets import Budget
+from beancount_mcp.models.goals import Goal
+from beancount_mcp.models.recurring import Recurring
 from beancount_mcp.recipes.registry import RecipeRegistry
 
 
@@ -22,6 +25,55 @@ class ProfileService:
         if caller.actor == "agent":
             raise ApprovalRequired("the profile can only be changed by the user")
         return await asyncio.to_thread(self._put, ledger_id, profile, expected_version)
+
+    async def set_recurring(self, ledger_id: str, rid: str, item: Recurring | None, caller: Caller) -> ProfileView:
+        """Add, replace or (with `None`) remove one recurring item. For users only, like the rest of the profile."""
+        if caller.actor == "agent":
+            raise ApprovalRequired("recurring items are set by the user")
+
+        def run() -> ProfileView:
+            ledger = self._store.open(ledger_id)
+            store = ProfileStore(ledger.root)
+            profile, version = store.load()
+            recurring = {k: v for k, v in profile.recurring.items() if k != rid}
+            if item is not None:
+                recurring[rid] = item
+            store.save(profile.model_copy(update={"recurring": recurring}), version)
+            return self._view(ledger_id)
+
+        return await asyncio.to_thread(run)
+
+    async def set_budget(self, ledger_id: str, bid: str, budget: Budget | None, caller: Caller) -> ProfileView:
+        """Add, replace or (with `None`) remove one budget. For users only, like the rest of the profile."""
+        if caller.actor == "agent":
+            raise ApprovalRequired("budgets are set by the user")
+
+        def run() -> ProfileView:
+            store = ProfileStore(self._store.open(ledger_id).root)
+            profile, version = store.load()
+            budgets = {k: v for k, v in profile.budgets.items() if k != bid}
+            if budget is not None:
+                budgets[bid] = budget
+            store.save(profile.model_copy(update={"budgets": budgets}), version)
+            return self._view(ledger_id)
+
+        return await asyncio.to_thread(run)
+
+    async def set_goal(self, ledger_id: str, gid: str, goal: Goal | None, caller: Caller) -> ProfileView:
+        """Add, replace or (with `None`) remove one goal. For users only, like the rest of the profile."""
+        if caller.actor == "agent":
+            raise ApprovalRequired("goals are set by the user")
+
+        def run() -> ProfileView:
+            store = ProfileStore(self._store.open(ledger_id).root)
+            profile, version = store.load()
+            goals = {k: v for k, v in profile.goals.items() if k != gid}
+            if goal is not None:
+                goals[gid] = goal
+            store.save(profile.model_copy(update={"goals": goals}), version)
+            return self._view(ledger_id)
+
+        return await asyncio.to_thread(run)
 
     def _put(self, ledger_id: str, profile: Profile, expected_version: str | None) -> ProfileView:
         ledger = self._store.open(ledger_id)
@@ -54,4 +106,15 @@ class ProfileService:
             for recipe in account.recipes or []:
                 if recipe not in known_recipes:
                     warnings.append(f"{name}: unknown recipe {recipe}")
+        for rid, item in profile.recurring.items():
+            for referenced in (item.from_account, item.to_account):
+                if referenced not in open_accounts:
+                    warnings.append(f"recurring {rid}: {referenced} is not open")
+        for bid, budget in profile.budgets.items():
+            if not any(name == budget.account or name.startswith(budget.account + ":") for name in open_accounts):
+                warnings.append(f"budget {bid}: no open account under {budget.account}")
+        for gid, goal in profile.goals.items():
+            for name in goal.accounts:
+                if not any(open_name == name or open_name.startswith(name + ":") for open_name in open_accounts):
+                    warnings.append(f"goal {gid}: no open account under {name}")
         return warnings

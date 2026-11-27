@@ -31,12 +31,24 @@ packages = ["src/beancount_mcp"]
 [dependency-groups]
 dev = [
     "httpx2>=2.16.2",
+    "pillow>=13.0.0",
+    "pypdfium2>=5.15.2",
     "pytest>=9.2.0",
     "pytest-cov>=7.1.0",
+    "rapidocr-onnxruntime>=1.4.4",
 ]
 
 [project.scripts]
 beancount-mcp = "beancount_mcp.__main__:main"
+
+[project.optional-dependencies]
+receipts = [
+    "pillow>=13.0.0",
+    "pypdfium2>=5.15.2",
+]
+ocr = [
+    "rapidocr-onnxruntime>=1.4.4",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

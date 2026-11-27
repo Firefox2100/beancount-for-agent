@@ -2,7 +2,7 @@ from fastapi import FastAPI, Request
 from fastapi.responses import JSONResponse
 
 from beancount_mcp.api.auth import BearerTokenMiddleware
-from beancount_mcp.api.routers import accounts, actions, agent as agent_routes, changes, directives, imports as import_routes, ledgers, transactions, views
+from beancount_mcp.api.routers import accounts, actions, agent as agent_routes, changes, directives, budgets as budget_routes, goals as goal_routes, receipts as receipt_routes, imports as import_routes, ledgers, recurring as recurring_routes, transactions, views
 from beancount_mcp.config import Settings, load_settings
 from beancount_mcp.imports import default_importers
 from beancount_mcp.imports.registry import ImporterRegistry
@@ -16,6 +16,8 @@ from beancount_mcp.services.actions import ActionService
 from beancount_mcp.services.agent import AgentService
 from beancount_mcp.services.changes import ChangeService
 from beancount_mcp.services.imports import ImportService
+from beancount_mcp.ocr import OcrRegistry, default_ocr
+from beancount_mcp.services.receipts import ReceiptAccess, ReceiptService
 from beancount_mcp.services.ledgers import LedgerService
 from beancount_mcp.services.profiles import ProfileService
 from beancount_mcp.services.reference_rates import ReferenceRateService
@@ -38,10 +40,11 @@ _STATUS_BY_ERROR: dict[type[errors.LedgerStoreError], int] = {
     errors.UnsupportedStructure: 409,
     errors.ImportNotFound: 404,
     errors.ImportRefused: 422,
+    errors.ReceiptRefused: 422,
 }
 
 
-def create_app(settings: Settings | None = None, registry: RecipeRegistry | None = None, importers: ImporterRegistry | None = None) -> FastAPI:
+def create_app(settings: Settings | None = None, registry: RecipeRegistry | None = None, importers: ImporterRegistry | None = None, ocr: OcrRegistry | None = None) -> FastAPI:
     settings = settings or load_settings()
     store = LedgerStore(settings.data_dir, settings.layout)
     registry = registry or default_registry()
@@ -58,10 +61,15 @@ def create_app(settings: Settings | None = None, registry: RecipeRegistry | None
     change_service = ChangeService(store, actions_service, settings.agent_approval_required)
 
     import_service = ImportService(store, ledger_service, change_service, importers or default_importers(), settings.import_max_bytes)
-    agent = AgentService(store, ledger_service, change_service, actions_service, view_service, import_service)
+    receipt_service = ReceiptService(
+        store, ledger_service, settings.receipts_max_bytes, ocr or default_ocr(),
+        ReceiptAccess(text=settings.receipts_ocr_enabled, images=settings.receipts_agent_images),
+        settings.receipts_ocr_backend, settings.receipts_max_pages,
+    )
+    agent = AgentService(store, ledger_service, change_service, actions_service, view_service, import_service, receipt_service)
     mcp_app = mcp_instance = None
     if settings.mcp_enabled:
-        mcp = create_mcp(agent, settings.mcp_raw_transactions)
+        mcp = create_mcp(agent, settings.mcp_raw_transactions, receipt_service.access)
         mcp_app = mcp.http_app(path="/mcp")
         mcp_instance = mcp
 
@@ -75,6 +83,7 @@ def create_app(settings: Settings | None = None, registry: RecipeRegistry | None
     app.state.profile_service = ProfileService(store, registry)
     app.state.change_service = change_service
     app.state.import_service = import_service
+    app.state.receipt_service = receipt_service
     app.state.agent_service = agent
     app.include_router(ledgers.router)
     app.include_router(accounts.router)
@@ -84,6 +93,10 @@ def create_app(settings: Settings | None = None, registry: RecipeRegistry | None
     app.include_router(actions.router)
     app.include_router(views.router)
     app.include_router(import_routes.router)
+    app.include_router(budget_routes.router)
+    app.include_router(goal_routes.router)
+    app.include_router(receipt_routes.router)
+    app.include_router(recurring_routes.router)
     app.include_router(agent_routes.router)
 
     @app.exception_handler(errors.LedgerStoreError)

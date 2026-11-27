@@ -59,6 +59,14 @@ class DeleteDirective(BaseModel):
     id: str
 
 
+class AttachReceipt(BaseModel):
+    """Link a stored receipt to a transaction: a `document` entry on its account and a `document` note on the transaction."""
+
+    kind: Literal["attach_receipt"] = "attach_receipt"
+    id: str = Field(description="The transaction.")
+    path: str = Field(description="The receipt, relative to the ledger folder.")
+
+
 class Reconcile(BaseModel):
     """Assert an account's balance, optionally padding the difference from another account."""
 
@@ -93,6 +101,7 @@ Operation = Annotated[
     | UpdateDirective
     | DeleteDirective
     | Reconcile
+    | AttachReceipt
     | Batch,
     Field(discriminator="kind"),
 ]

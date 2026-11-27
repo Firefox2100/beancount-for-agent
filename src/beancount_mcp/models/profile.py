@@ -3,7 +3,10 @@ from typing import Annotated
 
 from pydantic import BaseModel, Field, StringConstraints
 
+from beancount_mcp.models.budgets import Budget, BudgetId
+from beancount_mcp.models.goals import Goal, GoalId
 from beancount_mcp.models.common import AccountName, Amount, FiniteDecimal, Text
+from beancount_mcp.models.recurring import Recurring, RecurringId
 
 KindName = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_-]{0,31}$")]
 PoolName = Annotated[str, StringConstraints(pattern=r"^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$")]
@@ -36,6 +39,9 @@ class Pool(BaseModel):
 class Profile(BaseModel):
     accounts: dict[AccountName, AccountProfile] = Field(default_factory=dict)
     pools: dict[PoolName, Pool] = Field(default_factory=dict)
+    recurring: dict[RecurringId, Recurring] = Field(default_factory=dict)
+    budgets: dict[BudgetId, Budget] = Field(default_factory=dict)
+    goals: dict[GoalId, Goal] = Field(default_factory=dict)
 
 
 class ProfileView(BaseModel):

@@ -100,3 +100,28 @@ test("describeChange groups long numbers by thousands", () => {
   assert.match(text, /-1,234,567.80 GBP/);
   assert.equal(grouped("999"), "999");
 });
+
+test("uploadReceipt sends the file as multipart and acts as the user", async () => {
+  const seen = [];
+  const client = createClient({
+    baseUrl: "http://svc/",
+    token: "t0k",
+    actor: "user",
+    fetch: async (url, init) => {
+      seen.push({ url: String(url), init, file: init.body.get("file") });
+      return new Response(JSON.stringify({ path: "documents/receipts/2026/ab-r.png", name: "ab-r.png", linked: false }), { status: 201 });
+    },
+  });
+  const stored = await client.uploadReceipt("main", { name: "attached.png", type: "image/png", bytes: new Uint8Array([1, 2, 3]) });
+  assert.equal(stored.path, "documents/receipts/2026/ab-r.png");
+  assert.equal(seen[0].url, "http://svc/ledgers/main/receipts");
+  assert.equal(seen[0].init.method, "POST");
+  assert.equal(seen[0].init.headers["x-actor"], "user");
+  assert.equal(seen[0].init.headers.authorization, "Bearer t0k");
+  assert.equal(seen[0].init.headers["content-type"], undefined);
+  assert.equal(seen[0].file.name, "attached.png");
+  assert.equal(seen[0].file.type, "image/png");
+  assert.equal(seen[0].file.size, 3);
+  const refused = createClient({ baseUrl: "http://svc", fetch: async () => new Response(JSON.stringify({ detail: "not a supported receipt" }), { status: 422 }) });
+  await assert.rejects(refused.uploadReceipt("main", { name: "a.exe", type: "x", bytes: new Uint8Array(1) }), (error) => error.status === 422 && /not a supported/.test(String(error.detail)));
+});

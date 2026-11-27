@@ -60,6 +60,37 @@ export class Finance {
     }
   }
 
+  private abilities: { receipts: boolean } = { receipts: false }
+  private checkedAt = 0
+
+  /**
+   * Whether the service lets an agent read receipts. `when` conditions are synchronous, so this answers from what was last
+   * heard and refreshes in the background once a minute: the first step after a start may not offer the tool yet.
+   */
+  can(ability: 'receipts'): boolean {
+    if (Date.now() - this.checkedAt > 60_000) {
+      this.checkedAt = Date.now()
+      this.user<{ receipts: { text: boolean; images: boolean } }>('GET', '/agent/capabilities')
+        .then((found) => { this.abilities = { receipts: found.receipts.text || found.receipts.images } })
+        .catch(() => { this.abilities = { receipts: false } })
+    }
+    return this.abilities[ability]
+  }
+
+  /** Store the image the user attached, as the user. The model never supplies the bytes: the plugin takes them from the session. */
+  async uploadReceipt(ledger: string, file: { name: string; type: string; bytes: Uint8Array }, signal?: AbortSignal): Promise<{ path: string }> {
+    const settings = this.settings()
+    const token = await this.token()
+    const client = createClient({ baseUrl: settings.baseUrl, ...(token === undefined ? {} : { token }), actor: 'user', clientId: 'dsh-ui', fetch: this.fetchImpl })
+    const deadline = AbortSignal.timeout(settings.timeoutMs)
+    try {
+      return await client.uploadReceipt(ledger, file, signal === undefined ? deadline : AbortSignal.any([signal, deadline]))
+    } catch (error) {
+      if (error instanceof ApiError) throw new FinanceError(describeDetail(error.detail), error.status)
+      throw new FinanceError(`cannot reach the finance service at ${settings.baseUrl}`)
+    }
+  }
+
   /** `GET /agent/...` and friends, as the model's session. */
   agent<T>(session: string, method: string, path: string, options?: CallOptions): Promise<T> {
     return this.call<T>({ actor: 'agent', session }, method, path, options)

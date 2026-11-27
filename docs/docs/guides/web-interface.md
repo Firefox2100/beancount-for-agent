@@ -20,6 +20,26 @@ Each ledger also links to its **history**: the last fifty resolved proposals wit
 
 Each ledger has an **overview**, the same one the DeepSeek Harness dock shows: assets, liabilities and net position over the last twelve weeks or months, the asset allocation, what is due soon, and every account grouped by type with its balance. Valuations are approximate reference values and are never written to the ledger (see [Views](../concepts/views.md)); the **Refresh rates** button throws the rate cache away and prices the ledger again. Long numbers are written with commas, such as `123,456.78`, here and in the dock.
 
+## Receipts
+
+**Receipts** (per ledger) is where you upload a receipt photo or PDF, optionally linking it to a transaction. It lists what is stored and whether the ledger links it, and a stored receipt can be linked to a transaction from there. A proposal an agent makes from a receipt shows it in the inbox beside the postings. See [Receipts](../concepts/receipts.md).
+
+## Goals
+
+**Goals** (per ledger) lists each savings goal with a progress bar, what remains, what to put aside each month to arrive on time and when the plan reaches the target. See [Goals](../concepts/goals.md). The overview also lists **Worth a look**: errors, overdrawn accounts, stale balances and likely duplicates, see [Checks](../concepts/checks.md).
+
+## Budgets
+
+**Budgets** (per ledger) shows each limit with a progress bar and a marker for how far through the period you are, the projection, the daily allowance and the earlier periods. It suggests budgets from your history and has a form to add one. Budgets that are over or ahead also appear on the overview. See [Budgets](../concepts/budgets.md).
+
+## Reports
+
+**Reports** (per ledger) shows income and expenses over a period by account, with a month or week breakdown, an optional comparison with the period before, and drill-down into a group. See [Reports](../concepts/reports.md).
+
+## Recurring
+
+**Recurring** (per ledger) lists each schedule with what is overdue or coming up, repeating payments found in your history with an **Add** button, and a form to add one yourself. Items due soon also appear on the overview. See [Recurring items](../concepts/recurring.md).
+
 ## Statements
 
 **Statements** (per ledger) is where you upload a bank file for an account. It lists what was uploaded, how many lines are still new and any warnings, and each statement opens to its numbered lines with their status. The agent then proposes the new lines for you to approve in the inbox. See [Importing statements](../concepts/imports.md).

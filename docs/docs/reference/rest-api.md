@@ -32,6 +32,15 @@ The complete CRUD surface, used by people, scripts and harness plugins that act 
 | `PUT` | `/ledgers/{ledger_id}/profile` | Put Profile |
 | `GET` | `/ledgers/{ledger_id}/recipes` | List Recipes |
 
+## Budgets
+
+| Method | Path | What it does |
+| --- | --- | --- |
+| `GET` | `/ledgers/{ledger_id}/budgets` | Each budget's current period: spent, what remains, the pace and a projection. Over budget first. |
+| `GET` | `/ledgers/{ledger_id}/budgets/suggestions` | Monthly budgets suggested by the average of the last whole months, for expense groups that have none. |
+| `DELETE` | `/ledgers/{ledger_id}/budgets/{budget_id}` | Delete Budget |
+| `PUT` | `/ledgers/{ledger_id}/budgets/{budget_id}` | Set Budget |
+
 ## Changes
 
 | Method | Path | What it does |
@@ -54,6 +63,14 @@ The complete CRUD surface, used by people, scripts and harness plugins that act 
 | `GET` | `/ledgers/{ledger_id}/directives/{record_id}` | Get Directive |
 | `PUT` | `/ledgers/{ledger_id}/directives/{record_id}` | Update Directive |
 
+## Goals
+
+| Method | Path | What it does |
+| --- | --- | --- |
+| `GET` | `/ledgers/{ledger_id}/goals` | Each goal with what is saved, what remains and, with a deadline, what to put aside each month. Behind first. |
+| `DELETE` | `/ledgers/{ledger_id}/goals/{goal_id}` | Delete Goal |
+| `PUT` | `/ledgers/{ledger_id}/goals/{goal_id}` | Set Goal |
+
 ## Imports
 
 | Method | Path | What it does |
@@ -72,6 +89,24 @@ The complete CRUD surface, used by people, scripts and harness plugins that act 
 | `POST` | `/ledgers` | Create Ledger |
 | `GET` | `/ledgers/{ledger_id}` | Get Ledger |
 
+## Receipts
+
+| Method | Path | What it does |
+| --- | --- | --- |
+| `GET` | `/ledgers/{ledger_id}/receipts` | Every image and PDF in the ledger's documents folder, uploaded or put there by hand, and whether the ledger links it. |
+| `POST` | `/ledgers/{ledger_id}/receipts` | Upload Receipt |
+| `POST` | `/ledgers/{ledger_id}/receipts/attach` | Link a stored receipt to a transaction. |
+| `GET` | `/ledgers/{ledger_id}/receipts/file` | The receipt itself, for a person to look at. |
+
+## Recurring
+
+| Method | Path | What it does |
+| --- | --- | --- |
+| `GET` | `/ledgers/{ledger_id}/recurring` | Each item with the occurrences not yet recorded: overdue ones, then those due within `within_days`. |
+| `GET` | `/ledgers/{ledger_id}/recurring/suggestions` | Payments that repeat at a steady spacing in the history and are not covered by an item yet. |
+| `DELETE` | `/ledgers/{ledger_id}/recurring/{item_id}` | Delete Recurring |
+| `PUT` | `/ledgers/{ledger_id}/recurring/{item_id}` | Set Recurring |
+
 ## Transactions
 
 | Method | Path | What it does |
@@ -86,9 +121,11 @@ The complete CRUD surface, used by people, scripts and harness plugins that act 
 
 | Method | Path | What it does |
 | --- | --- | --- |
+| `GET` | `/ledgers/{ledger_id}/checks` | Things in the books worth a look: ledger errors, overdrawn accounts, stale balances, likely duplicates, uncategorised entries. |
 | `GET` | `/ledgers/{ledger_id}/due` | Accounts with a statement or due day: what is owed and when. `within_days` keeps only those due soon with a balance. |
 | `GET` | `/ledgers/{ledger_id}/financial-position` | Assets, liabilities and net position, with explicitly approximate reference valuations. |
 | `GET` | `/ledgers/{ledger_id}/open-items` | Unsettled claims, invoices, loans and bills, grouped by link. Without `account`, every receivable and payable. |
 | `GET` | `/ledgers/{ledger_id}/pools` | Shared credit limits: used and available, converting with the ledger's price directives. |
 | `POST` | `/ledgers/{ledger_id}/reference-rates/refresh` | Forget the cached rates, so the next valuation fetches fresh ones. The cache is shared by every ledger, and only the user may clear it. |
 | `GET` | `/ledgers/{ledger_id}/reference-rates/status` | Whether reference valuations are on and how fresh the cached rates are. The cache belongs to the service, not to this ledger. |
+| `GET` | `/ledgers/{ledger_id}/reports/income-statement` | Income and expenses over a period (this month so far by default), grouped by account. `compare` adds the equal period before. |

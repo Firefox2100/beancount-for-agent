@@ -1,4 +1,5 @@
 import datetime as dt
+import os
 import uuid
 from decimal import Decimal
 from pathlib import Path
@@ -9,10 +10,12 @@ from beancount.parser import printer
 
 from beancount_mcp.ledger.errors import NotEditable, TransactionNotFound
 from beancount_mcp.ledger.layout import accounts_file, transaction_file
-from beancount_mcp.ledger.read import find_record, find_transaction
+from beancount_mcp.ledger.read import find_record, find_transaction, to_transaction
 from beancount_mcp.models.details import meta_key, to_meta
 from beancount_mcp.models import (
     AddDirective,
+    AttachReceipt,
+    DocumentDirective,
     AddTransaction,
     Batch,
     BalanceAssertion,
@@ -60,8 +63,11 @@ def apply_operation(stage: Path, layout: Layout, entries: list, operation: Opera
             return {"account": operation.account}
         case AddDirective():
             new_id = uuid.uuid4().hex
-            _append(stage / _directive_file(layout, operation.directive), _render_directive(operation.directive, new_id))
+            target = stage / _directive_file(layout, operation.directive)
+            _append(target, _render_directive(operation.directive, new_id, stage, target))
             return {"record_id": new_id}
+        case AttachReceipt():
+            return _attach_receipt(stage, layout, entries, operation)
         case UpdateDirective():
             return _update_directive(stage, layout, entries, operation)
         case Reconcile():
@@ -122,9 +128,9 @@ def _reconcile(stage: Path, layout: Layout, operation: Reconcile) -> dict:
 def _update_directive(stage: Path, layout: Layout, entries: list, operation: UpdateDirective) -> dict:
     entry = _editable_record(stage, entries, operation.id)
     stored_id = str(entry.meta.get("id") or uuid.uuid4().hex)
-    text = _render_directive(operation.directive, stored_id)
     current = Path(entry.meta["filename"])
     target = stage / _directive_file(layout, operation.directive)
+    text = _render_directive(operation.directive, stored_id, stage, target)
     if current.resolve() == target.resolve():
         _replace_span(current, entry.meta["lineno"], text)
     else:
@@ -133,13 +139,31 @@ def _update_directive(stage: Path, layout: Layout, entries: list, operation: Upd
     return {"record_id": stored_id}
 
 
+def _attach_receipt(stage: Path, layout: Layout, entries: list, operation: AttachReceipt) -> dict:
+    """Link a stored receipt to a transaction, the way Fava expects: a document entry and a `document` note."""
+    entry = _editable_transaction(stage, entries, operation.id)
+    current = to_transaction(entry)
+    name = operation.path.rsplit("/", 1)[-1]
+    meta = dict(current.meta)
+    if name not in meta.values():
+        key = "document" if "document" not in meta else next(f"document-{n}" for n in range(2, 100) if f"document-{n}" not in meta)
+        meta[key] = name
+    update = UpdateTransaction(id=operation.id, transaction=TransactionInput(**{**current.model_dump(exclude={"id"}), "meta": meta}))
+    _update_transaction(stage, layout, entries, update)
+    account = next((p.account for p in current.postings if p.account.split(":")[0] in ("Assets", "Liabilities")), current.postings[0].account)
+    directive = DocumentDirective(date=current.date, account=account, path=operation.path)
+    target = stage / _directive_file(layout, directive)
+    _append(target, _render_directive(directive, uuid.uuid4().hex, stage, target))
+    return {"transaction_id": operation.id}
+
+
 def _directive_file(layout: Layout, directive: Directive) -> str:
     if isinstance(directive, CommodityDirective):
         return accounts_file(layout)
     return transaction_file(layout, directive.date)
 
 
-def _render_directive(directive: Directive, identifier: str) -> str:
+def _render_directive(directive: Directive, identifier: str, stage: Path | None = None, target: Path | None = None) -> str:
     meta = {"id": identifier}
     match directive:
         case BalanceAssertion():
@@ -153,6 +177,10 @@ def _render_directive(directive: Directive, identifier: str) -> str:
             entry = data.Commodity(meta, directive.date, directive.currency)
         case NoteDirective():
             entry = data.Note(meta, directive.date, directive.account, directive.comment, None, None)
+        case DocumentDirective():
+            # Beancount reads a document's path relative to the file it is written in.
+            filename = os.path.relpath(stage / directive.path, target.parent)  # type: ignore[operator]
+            entry = data.Document(meta, directive.date, directive.account, filename, None, None)
         case EventDirective():
             entry = data.Event(meta, directive.date, directive.type, directive.description)
     return printer.format_entry(entry)

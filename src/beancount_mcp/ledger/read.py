@@ -1,4 +1,5 @@
 import hashlib
+from pathlib import Path
 from collections import defaultdict
 from datetime import date
 from decimal import Decimal
@@ -13,6 +14,7 @@ from beancount_mcp.models import (
     BalanceAssertion,
     CommodityDirective,
     Directive,
+    DocumentDirective,
     EventDirective,
     NoteDirective,
     PadDirective,
@@ -32,7 +34,7 @@ def is_user_transaction(entry) -> bool:
     return isinstance(entry, data.Transaction) and entry.flag in USER_FLAGS
 
 
-RECORD_TYPES = (data.Balance, data.Pad, data.Price, data.Commodity, data.Note, data.Event)
+RECORD_TYPES = (data.Balance, data.Pad, data.Price, data.Commodity, data.Note, data.Document, data.Event)
 
 
 def entry_fingerprint(entry) -> str:
@@ -58,7 +60,7 @@ def find_record(entries: list, identifier: str):
     return None
 
 
-def to_directive(entry) -> Directive:
+def to_directive(entry, root: Path | None = None) -> Directive:
     match entry:
         case data.Balance():
             return BalanceAssertion(
@@ -75,18 +77,29 @@ def to_directive(entry) -> Directive:
             return CommodityDirective(date=entry.date, currency=entry.currency)
         case data.Note():
             return NoteDirective(date=entry.date, account=entry.account, comment=entry.comment)
+        case data.Document():
+            return DocumentDirective(date=entry.date, account=entry.account, path=_relative(entry.filename, root))
         case data.Event():
             return EventDirective(date=entry.date, type=entry.type, description=entry.description)
     raise TypeError(type(entry).__name__)
 
 
-def to_record(entry) -> Record:
-    return Record(id=transaction_id(entry), directive=to_directive(entry))
+def _relative(filename: str, root: Path | None) -> str:
+    """A document's path as the ledger folder sees it. Beancount loads it as an absolute path."""
+    path = Path(filename)
+    if root is not None and path.is_relative_to(root):
+        return path.relative_to(root).as_posix()
+    return filename
+
+
+def to_record(entry, root: Path | None = None) -> Record:
+    return Record(id=transaction_id(entry), directive=to_directive(entry, root))
 
 
 def list_records(
     entries: list,
     *,
+    root: Path | None = None,
     kind: str | None = None,
     account: str | None = None,
     start: date | None = None,
@@ -96,7 +109,7 @@ def list_records(
     for entry in entries:
         if not is_record(entry):
             continue
-        record = to_record(entry)
+        record = to_record(entry, root)
         if kind and record.directive.kind != kind:
             continue
         if start and entry.date < start or end and entry.date > end:

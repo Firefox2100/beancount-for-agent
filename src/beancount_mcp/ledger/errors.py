@@ -75,3 +75,7 @@ class ImportNotFound(LedgerStoreError):
 
 class ImportRefused(LedgerStoreError):
     """An uploaded statement cannot be read or used, and why."""
+
+
+class ReceiptRefused(LedgerStoreError):
+    """A receipt cannot be stored, found or read, and why."""

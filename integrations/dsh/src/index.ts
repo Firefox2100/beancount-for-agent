@@ -2,6 +2,7 @@ import { readFileSync } from 'node:fs'
 import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import type { Context } from '@deepseek-ai/cordis'
+import type { Agent } from '@deepseek-ai/dsh-agent'
 import type {} from '@deepseek-ai/dsh-client-connection'
 import type {} from '@deepseek-ai/dsh-commands'
 import { credentialRef } from '@deepseek-ai/dsh-credentials'
@@ -81,14 +82,37 @@ export async function apply(ctx: Context, config: Accessors): Promise<void> {
     await records.put(key, applyChange(current, change))
   }
 
-  for (const { group, definition } of financeTools({
+  /**
+   * The newest image among the user's messages in this session, read back from the attachment store. Nothing the model
+   * wrote is used: only what the user sent. DSH stores the normalized image, which is what the model saw.
+   */
+  const attachedImage = async (agent: Agent) => {
+    const attachments = ctx.get('attachments') as { readImage(ref: unknown, signal?: AbortSignal): Promise<{ ref: { mediaType: string }; data: Uint8Array }> } | undefined
+    if (attachments === undefined) return undefined
+    let newest: { mediaType: string } | undefined
+    for (const message of (agent.session as unknown as { surface: { messages: ReadonlyMap<unknown, { role: string; content: unknown }> } }).surface.messages.values()) {
+      if (message.role !== 'user' || !Array.isArray(message.content)) continue
+      for (const block of message.content as { type: string; attachment?: { mediaType: string } }[]) {
+        if (block.type === 'image' && block.attachment !== undefined) newest = block.attachment
+      }
+    }
+    if (newest === undefined) return undefined
+    const stored = await attachments.readImage(newest)
+    const extension = stored.ref.mediaType === 'image/jpeg' ? 'jpg' : stored.ref.mediaType.replace('image/', '')
+    return { name: `attached.${extension}`, type: stored.ref.mediaType, bytes: stored.data }
+  }
+
+  for (const { group, definition, needs } of financeTools({
     finance,
+    attachedImage,
     stateOf: agent => stateOf(agent.session),
     update: (agent, change) => write(agent.session, change),
   })) {
     ctx.tools.register(
       definition,
-      group === 'core' ? undefined : { when: ({ agent }) => stateOf(agent.session).groups[group] },
+      group === 'core' && needs === undefined
+        ? undefined
+        : { when: ({ agent }) => (group === 'core' || stateOf(agent.session).groups[group]) && (needs === undefined || finance.can(needs)) },
     )
   }
 

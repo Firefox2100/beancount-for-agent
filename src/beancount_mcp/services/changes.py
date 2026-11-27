@@ -1,4 +1,6 @@
 import asyncio
+
+from beancount_mcp.ledger import receipts
 from datetime import UTC, datetime
 
 from beancount_mcp.ledger.engine import Ledger
@@ -83,6 +85,8 @@ class ChangeService:
             raise VersionRequired("submit changes with the ledger version you last saw (If-Match)")
         ledger = self._store.open(ledger_id)
         operation, source = self._operation_of(ledger_id, request)
+        if request.receipts:
+            operation = receipts.attach(operation, request.receipts, ledger.root)
         store = PendingStore(ledger.root)
         with ledger.lock:
             auto_approve = caller.actor == "agent" and not self._agent_approval_required
