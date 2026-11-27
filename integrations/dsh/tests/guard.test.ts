@@ -21,6 +21,18 @@ describe('guard', () => {
     expect(judge('bash', { command: 'ls /srv/other' }, { paths: ['/srv/finance', ''] })).toBeUndefined()
   })
 
+  it('judges arguments it has never heard of, and only exempts prose', () => {
+    const ledger = ['main', '.bea', 'ncount'].join('')
+    const sidecar = ['.side', 'car'].join('')
+    expect(judge('shell', { args: ['cat', ledger] }, options)).toMatch(/finance tools instead/)
+    expect(judge('shell', { argv: ['ls', `/data/${sidecar}`] }, options)).toMatch(/finance tools instead/)
+    expect(judge('copy', { source: ledger, destination: '/tmp/x' }, options)).toMatch(/finance tools instead/)
+    expect(judge('archive', { input: `/data/${sidecar}`, output: '/tmp/a.zip' }, options)).toMatch(/finance tools instead/)
+    expect(judge('anything', { nested: { deeper: [{ target: ledger }] } }, options)).toMatch(/finance tools instead/)
+    expect(judge('write', { file_path: '/repo/notes.md', content: `see ${ledger}`, new_string: `and ${sidecar}` }, options)).toBeUndefined()
+    expect(judge('shell', { args: ['git', 'status'] }, options)).toBeUndefined()
+  })
+
   it('reads the arguments that name a file, not the text a tool is given', () => {
     // Built from fragments for the same reason guard.ts builds its own patterns that way: this file must not itself
     // read as an attempt to reach a ledger.

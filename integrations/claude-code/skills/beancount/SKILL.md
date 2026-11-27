@@ -41,12 +41,13 @@ The ledger is double-entry. You never need its file syntax, only these ideas:
    - `reconcile_account` to assert a balance the user reads off a statement.
    - `open_account` and `close_account` for the account list itself.
    - `amend_transaction` to fix the date, payee, narration or tags of something already recorded, and `delete_transaction` to remove a wrong or duplicate entry. Find the id with `search_transactions`. Amounts and accounts cannot be amended: delete it and record it again.
-3. Reads: `get_balances`, `search_transactions`, `get_open_items` (claims, loans and bills not yet settled), `get_due` (statements and due dates), `get_credit_pools` (available credit).
+3. Reads: `get_balances`, `search_transactions`, `get_open_items` (claims, loans and bills not yet settled), `get_due` (statements and due dates), `get_credit_pools` (available credit), `get_financial_position` (assets, liabilities and net position over recent weeks or months, with approximate reference values when the service has them switched on).
 
 ## Sending less
 
 - Leave `ledger` out when there is only one ledger, and leave `date` out for today.
 - A bare number is enough when the account holds one currency. Otherwise write `"12.50 USD"`.
+- **Never add up, split or convert numbers yourself.** Write a formula and the service works it out exactly: `"18.65 + 6.60 + 7.40 GBP"` for a receipt, `"48 / 3 GBP"` for a split, `"42 * 1.15 GBP"` for a tip, or `1 / 8.73` for a rate. Use `+ - * /` and brackets only, write the currency once, and copy the numbers as they appear. A formula that cannot be worked out says what to send instead.
 - Give the amounts the user told you, in the currencies they told you. When a bank converted for them, pass the converted amount or the rate they gave. Never invent a rate.
 - When settling an open item, leave the amount out to settle everything that is open.
 

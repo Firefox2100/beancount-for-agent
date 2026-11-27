@@ -1,7 +1,7 @@
 import assert from "node:assert/strict";
 import { test } from "node:test";
 
-import { ApiError, configFromEnv, createClient, describeChange } from "../src/index.js";
+import { ApiError, configFromEnv, createClient, describeChange, grouped } from "../src/index.js";
 
 /** A fetch stub that records requests and answers from a route table. */
 function stub(routes) {
@@ -86,4 +86,17 @@ test("describeChange shows the exact postings", () => {
   assert.match(text, /from agent\/mcp/);
   assert.match(text, /add: 2026-03-01 Lunch/);
   assert.match(text, /Expenses:Food {2}12.50 USD/);
+});
+
+test("describeChange groups long numbers by thousands", () => {
+  const text = describeChange({
+    id: "c2", ledger_id: "main", status: "pending", note: null, caller: { actor: "agent", client_id: "mcp", session_id: null },
+    operation: { kind: "add_transaction", transaction: { date: "2026-03-01", payee: null, narration: "Rent", postings: [
+      { account: "Expenses:Rent", units: { number: "1234567.80", currency: "GBP" } },
+      { account: "Assets:Bank", units: { number: "-1234567.80", currency: "GBP" } },
+    ] } },
+  });
+  assert.match(text, /1,234,567.80 GBP/);
+  assert.match(text, /-1,234,567.80 GBP/);
+  assert.equal(grouped("999"), "999");
 });

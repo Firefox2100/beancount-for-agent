@@ -32,13 +32,24 @@ function describeOperation(operation, indent) {
   if (kind === "close_account") return [`${indent}close ${/** @type {any} */ (operation).account}`];
   if (kind === "reconcile") {
     const o = /** @type {any} */ (operation);
-    return [`${indent}reconcile ${o.account} to ${o.amount.number} ${o.amount.currency} on ${o.date}`];
+    return [`${indent}reconcile ${o.account} to ${grouped(o.amount.number)} ${o.amount.currency} on ${o.date}`];
   }
   return [`${indent}${kind}`];
 }
 
+/**
+ * A decimal written with commas between thousands (`-1,234,567.80`). Works on the text, so nothing passes through a float.
+ *
+ * @param {string | number} value
+ * @returns {string}
+ */
+export function grouped(value) {
+  const match = /^([+-]?)(\d+)(\.\d+)?$/.exec(String(value));
+  return match ? `${match[1]}${match[2].replace(/\B(?=(\d{3})+$)/g, ",")}${match[3] ?? ""}` : String(value);
+}
+
 function posting(p) {
-  const units = p.units ? `${p.units.number} ${p.units.currency}` : "";
-  const price = p.price ? ` @ ${p.price.number} ${p.price.currency}` : "";
+  const units = p.units ? `${grouped(p.units.number)} ${p.units.currency}` : "";
+  const price = p.price ? ` @ ${grouped(p.price.number)} ${p.price.currency}` : "";
   return `${p.account}  ${units}${price}`.trimEnd();
 }

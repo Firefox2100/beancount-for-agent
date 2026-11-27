@@ -924,7 +924,7 @@
         "type": "object"
       },
       "Amount-Input": {
-        "description": "A number and a currency. Also accepted as text: \"12.50 USD\".",
+        "description": "A number and a currency. Also accepted as text: \"12.50 USD\", or a formula: \"18.65 + 6.60 + 7.40 GBP\".",
         "properties": {
           "currency": {
             "pattern": "^([A-Z]|[A-Z][A-Z0-9'._-]{0,22}[A-Z0-9])$",
@@ -951,7 +951,7 @@
         "type": "object"
       },
       "Amount-Output": {
-        "description": "A number and a currency. Also accepted as text: \"12.50 USD\".",
+        "description": "A number and a currency. Also accepted as text: \"12.50 USD\", or a formula: \"18.65 + 6.60 + 7.40 GBP\".",
         "properties": {
           "currency": {
             "pattern": "^([A-Z]|[A-Z][A-Z0-9'._-]{0,22}[A-Z0-9])$",
@@ -8181,6 +8181,7 @@
     },
     "/ledgers/{ledger_id}/reference-rates/refresh": {
       "post": {
+        "description": "Forget the cached rates, so the next valuation fetches fresh ones. The cache is shared by every ledger, and only the user may clear it.",
         "operationId": "refresh_reference_rates_ledgers__ledger_id__reference_rates_refresh_post",
         "parameters": [
           {
@@ -8269,6 +8270,7 @@
     },
     "/ledgers/{ledger_id}/reference-rates/status": {
       "get": {
+        "description": "Whether reference valuations are on and how fresh the cached rates are. The cache belongs to the service, not to this ledger.",
         "operationId": "reference_rate_status_ledgers__ledger_id__reference_rates_status_get",
         "responses": {
           "200": {

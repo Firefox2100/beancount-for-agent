@@ -6,7 +6,7 @@ from pydantic import BaseModel, Field
 
 from beancount_mcp.ledger.errors import RecipeError
 from beancount_mcp.models import AddTransaction, Operation, Posting, TransactionInput
-from beancount_mcp.models.common import AccountName, Amount, FiniteDecimal, Tag, Text
+from beancount_mcp.models.common import AccountName, Amount, Rate, Tag, Text
 from beancount_mcp.recipes.base import Recipe, RecipeContext
 from beancount_mcp.recipes.helpers import (
     RATE_DESCRIPTION,
@@ -29,7 +29,7 @@ class SpendParams(DatedParams):
     charged: Money | None = Field(
         default=None, description="What the account was debited, when that is another currency than `amount`."
     )
-    rate: FiniteDecimal | None = Field(default=None, description=RATE_DESCRIPTION)
+    rate: Rate | None = Field(default=None, description=RATE_DESCRIPTION)
     payee: Text | None = None
     narration: Text = ""
     tags: list[Tag] = Field(default_factory=list)
@@ -57,7 +57,7 @@ class ReceiveParams(DatedParams):
     sent: Money | None = Field(
         default=None, description="What left the source, when that is another currency than `amount`."
     )
-    rate: FiniteDecimal | None = Field(default=None, description=RATE_DESCRIPTION)
+    rate: Rate | None = Field(default=None, description=RATE_DESCRIPTION)
     payee: Text | None = None
     narration: Text = ""
     tags: list[Tag] = Field(default_factory=list)
@@ -84,7 +84,7 @@ class TransferParams(DatedParams):
     received: Money | None = Field(
         default=None, description="What arrives, when the other account holds another currency."
     )
-    rate: FiniteDecimal | None = Field(default=None, description=RATE_DESCRIPTION)
+    rate: Rate | None = Field(default=None, description=RATE_DESCRIPTION)
     narration: Text = "Transfer"
     tags: list[Tag] = Field(default_factory=list)
 

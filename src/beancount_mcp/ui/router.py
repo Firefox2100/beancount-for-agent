@@ -21,11 +21,14 @@ from beancount_mcp.models import (
 )
 from beancount_mcp.models.common import Amount
 from beancount_mcp.models.details import DETAIL_FIELDS, SENSITIVE_FIELDS
-from beancount_mcp.ui.present import describe
+from beancount_mcp.ui.present import describe, grouped, held, line_chart
 from beancount_mcp.ui.session import COOKIE, SESSION_SECONDS, UiAuth
 
 USER = Caller(actor="user", client_id="ui")
 TEMPLATES = Jinja2Templates(directory=Path(__file__).parent / "templates")
+TEMPLATES.env.filters["num"] = grouped
+TEMPLATES.env.filters["held"] = held
+ROOTS = ("Assets", "Liabilities", "Equity", "Income", "Expenses")
 
 DETAIL_LABELS = {
     "bank_name": "Bank",
@@ -174,6 +177,54 @@ async def resolve(request: Request, ledger: str, change_id: str, verb: str, form
     except LedgerStoreError as exc:
         return back("/ui/", f"Could not {verb} {change_id}: {exc}", "error")
     return back("/ui/", f"{'Approved' if verb == 'approve' else 'Rejected'} {change_id}.")
+
+
+def _total(held_by_currency: dict[str, Decimal], base: str | None, rates: dict[str, str]) -> str:
+    """One line for a root: its base-currency total when every currency has a rate, else each currency as held."""
+    if base and held_by_currency and all(c == base or c in rates for c in held_by_currency):
+        value = sum((number * (1 if c == base else Decimal(rates[c])) for c, number in held_by_currency.items()), Decimal(0))
+        return f"≈ {grouped(f'{value:.2f}')} {base}"
+    return held({c: n for c, n in held_by_currency.items()})
+
+
+@protected.get("/ledgers/{ledger}/overview")
+async def overview(request: Request, ledger: str, interval: str = "month"):
+    """The same overview as the DeepSeek Harness dock: position, what is due, and every account with its balance."""
+    ledgers, _, _ = _services(request)
+    views = request.app.state.view_service
+    interval = interval if interval in ("week", "month") else "month"
+    accounts = [a for a in await ledgers.list_accounts(ledger) if a.close_date is None]
+    balances = {b.account: b.balances for b in await ledgers.balances(ledger, None)}
+    due = await views.due(ledger, None, None)
+    try:
+        position, problem = await views.financial_position(ledger, interval, 12), None
+    except Exception as exc:  # the valuation is optional; the rest of the page must still show
+        position, problem = None, str(exc)
+    rates = position.rates if position else {}
+    base = position.base_currency if position else None
+    roots = []
+    for root in ROOTS:
+        rows = [a for a in accounts if a.name == root or a.name.startswith(f"{root}:")]
+        if not rows:
+            continue
+        sums: dict[str, Decimal] = {}
+        for account in rows:
+            for currency, number in balances.get(account.name, {}).items():
+                sums[currency] = sums.get(currency, Decimal(0)) + Decimal(number)
+        roots.append({
+            "name": root, "total": _total(sums, base, rates),
+            "rows": [{"name": a.name, "short": a.name[len(root) + 1:], "type": a.type, "bank": a.details.get("bank_name"),
+                      "held": held(balances.get(a.name, {}))} for a in rows],
+        })
+    chart = line_chart(position.points, ("assets", "liabilities", "net")) if position else {}
+    return render(request, "overview.html", ledger=ledger, interval=interval, position=position, problem=problem,
+                  chart=chart, roots=roots, due=due, latest=position.points[-1] if position and position.points else None)
+
+
+@protected.post("/ledgers/{ledger}/reference-rates/refresh")
+async def refresh_rates(request: Request, ledger: str, form: dict = Depends(checked_form)):
+    status = await request.app.state.view_service.refresh_reference_rates(ledger)
+    return back(f"/ui/ledgers/{ledger}/overview", f"Reference rates: {status.state}.")
 
 
 @protected.get("/ledgers/{ledger}/history")

@@ -80,5 +80,5 @@ The complete CRUD surface, used by people, scripts and harness plugins that act 
 | `GET` | `/ledgers/{ledger_id}/financial-position` | Assets, liabilities and net position, with explicitly approximate reference valuations. |
 | `GET` | `/ledgers/{ledger_id}/open-items` | Unsettled claims, invoices, loans and bills, grouped by link. Without `account`, every receivable and payable. |
 | `GET` | `/ledgers/{ledger_id}/pools` | Shared credit limits: used and available, converting with the ledger's price directives. |
-| `POST` | `/ledgers/{ledger_id}/reference-rates/refresh` | Refresh Reference Rates |
-| `GET` | `/ledgers/{ledger_id}/reference-rates/status` | Reference Rate Status |
+| `POST` | `/ledgers/{ledger_id}/reference-rates/refresh` | Forget the cached rates, so the next valuation fetches fresh ones. The cache is shared by every ledger, and only the user may clear it. |
+| `GET` | `/ledgers/{ledger_id}/reference-rates/status` | Whether reference valuations are on and how fresh the cached rates are. The cache belongs to the service, not to this ledger. |

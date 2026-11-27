@@ -1,5 +1,6 @@
 import type { AllocationItem, PositionPoint } from './api.ts'
 import type { BeancountKey } from './locales.ts'
+import { grouped } from './money.ts'
 import css from './Page.module.css'
 
 type T = (key: BeancountKey, values?: Record<string, string | number>) => string
@@ -55,7 +56,7 @@ export function PositionChart({ points, t }: { points: PositionPoint[]; t: T }) 
             const value = reference(point, item.key)
             if (value === null) return null
             const x = 16 + index * (288 / Math.max(points.length - 1, 1))
-            return <circle key={point.date} className={`${css.chartPoint} ${css[item.key]}`} cx={x} cy={scale.y(value)} r="3"><title>{`${point.date}: ${item.label} ${point[item.key].reference_value?.number ?? '—'} ${point[item.key].reference_value?.currency ?? ''}`}</title></circle>
+            return <circle key={point.date} className={`${css.chartPoint} ${css[item.key]}`} cx={x} cy={scale.y(value)} r="3"><title>{`${point.date}: ${item.label} ${grouped(point[item.key].reference_value?.number ?? '—')} ${point[item.key].reference_value?.currency ?? ''}`}</title></circle>
           })}
         </g>)}
       </svg>
@@ -86,14 +87,14 @@ export function AllocationChart({ items, t }: { items: AllocationItem[]; t: T })
           const share = Number(item.share)
           const start = offset
           offset += share
-          return <circle key={item.account} className={css.donutSegment} cx="60" cy="60" r="42" pathLength="100" strokeDasharray={`${share} ${100 - share}`} strokeDashoffset={-start} style={{ stroke: SEGMENT_COLORS[index % SEGMENT_COLORS.length] }}><title>{`${item.account}: ${item.share}%`}</title></circle>
+          return <circle key={item.account} className={css.donutSegment} cx="60" cy="60" r="42" pathLength="100" strokeDasharray={`${share} ${100 - share}`} strokeDashoffset={-start} style={{ stroke: SEGMENT_COLORS[index % SEGMENT_COLORS.length] }}><title>{`${item.account}: ${grouped(item.share ?? '—')}%`}</title></circle>
         })}
       </svg>
       <div className={css.allocationLegend}>
         {items.map((item, index) => <div className={css.allocationRow} key={item.account}>
           <i style={{ background: SEGMENT_COLORS[index % SEGMENT_COLORS.length] }} />
           <span className={css.grow}>{item.account.replace(/^Assets:/, '')}</span>
-          <span className={css.amount}>{item.share == null ? '—' : `${item.share}%`}</span>
+          <span className={css.amount}>{item.share == null ? '—' : `${grouped(item.share)}%`}</span>
         </div>)}
       </div>
     </div>

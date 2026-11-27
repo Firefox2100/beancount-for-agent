@@ -11,12 +11,14 @@ export interface GuardOptions {
 const OWN_PREFIX = 'finance_'
 
 /**
- * The argument names that can carry a file, a pattern or a command. Only these are searched: a tool that writes a
- * document must be able to quote a ledger file name or a setting in its text without being refused.
+ * The argument names that carry prose: a document being written, text being replaced, a message. Everything else is
+ * searched, including argument names this guard has never heard of, so a tool with an unusual name for its command or
+ * its target (`args`, `argv`, `source`, `destination`, `input`) is judged like any other. Only prose is exempt, so a
+ * tool that writes a document can quote a ledger file name or a setting without being refused.
  */
-const GUARDED = new Set([
-  'command', 'cmd', 'script', 'pattern', 'glob', 'path', 'paths', 'file', 'files',
-  'file_path', 'filepath', 'notebook_path', 'directory', 'cwd', 'url', 'target',
+const PROSE = new Set([
+  'content', 'contents', 'text', 'old_string', 'new_string', 'old_str', 'new_str', 'replacement', 'message',
+  'description', 'prompt', 'body', 'summary', 'title', 'note', 'comment', 'comments',
 ])
 
 // The names are assembled from fragments so that this file does not contain the strings it refuses: an agent
@@ -31,7 +33,7 @@ const SENSITIVE: readonly RegExp[] = [new RegExp(`BEAN` + `COUNT_MCP_[A-Z]`)]
 
 const collected = (value: unknown, key: string | undefined, found: string[]): void => {
   if (typeof value === 'string') {
-    if (key !== undefined && GUARDED.has(key)) found.push(value)
+    if (key === undefined || !PROSE.has(key)) found.push(value)
     return
   }
   if (Array.isArray(value)) {

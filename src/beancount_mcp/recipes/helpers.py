@@ -15,10 +15,10 @@ from pydantic import BaseModel, Field
 
 from beancount_mcp.ledger.errors import RecipeError
 from beancount_mcp.models import Posting
-from beancount_mcp.models.common import AccountName, Amount, FiniteDecimal
+from beancount_mcp.models.common import AccountName, Amount, Number
 
-Money = Amount | FiniteDecimal
-"""An amount, text like "12.50 USD", or a bare number when the currency is unambiguous."""
+Money = Amount | Number
+"""An amount, text like "12.50 USD", a formula like "18.65 + 6.60 GBP", or a bare number or formula when the currency is unambiguous."""
 
 RATE_DESCRIPTION = "Units of the other amount's currency per one unit of this one. Use instead of giving the other amount."
 

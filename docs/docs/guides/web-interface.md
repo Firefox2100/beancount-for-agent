@@ -16,6 +16,10 @@ If approval fails (for example the ledger changed under a proposal that edits an
 
 Each ledger also links to its **history**: the last fifty resolved proposals with their notes.
 
+## Overview
+
+Each ledger has an **overview**, the same one the DeepSeek Harness dock shows: assets, liabilities and net position over the last twelve weeks or months, the asset allocation, what is due soon, and every account grouped by type with its balance. Valuations are approximate reference values and are never written to the ledger (see [Views](../concepts/views.md)); the **Refresh rates** button throws the rate cache away and prices the ledger again. Long numbers are written with commas, such as `123,456.78`, here and in the dock.
+
 ## Accounts
 
 The accounts of a ledger, with their type, currencies and bank. Click one for its page, which has two forms:

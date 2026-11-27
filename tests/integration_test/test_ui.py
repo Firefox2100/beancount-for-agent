@@ -167,3 +167,22 @@ def test_a_forged_session_is_refused(secured):
     client, _ = secured
     client.cookies.set("bm_session", "9999999999.abcd.deadbeef", path="/ui")
     assert client.get("/ui/", follow_redirects=False).status_code == 303
+
+
+def test_overview_shows_accounts_balances_and_the_position(client, ledger):
+    change_id = propose(client, amount="1234567.80")
+    post(client, f"/ui/ledgers/main/changes/{change_id}/approve")
+    page = client.get("/ui/ledgers/main/overview")
+    assert page.status_code == 200
+    for text in ("Financial position", "Accounts", "Assets", "Expenses"):
+        assert text in page.text
+    assert "1,234,567.80" in page.text and "1234567.80" not in page.text
+    assert "Overview" in client.get("/ui/").text
+
+
+def test_overview_needs_a_session_when_a_token_is_set(tmp_path):
+    from fastapi.testclient import TestClient
+    app = create_app(Settings(data_dir=tmp_path, auth_token=TOKEN, _env_file=None))
+    with TestClient(app) as bare:
+        response = bare.get("/ui/ledgers/main/overview", follow_redirects=False)
+        assert response.status_code == 303 and "/ui/login" in response.headers["location"]

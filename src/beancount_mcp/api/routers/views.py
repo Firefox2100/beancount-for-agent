@@ -44,11 +44,13 @@ async def financial_position(
 
 @router.get("/reference-rates/status")
 async def reference_rate_status(service: ViewServiceDep) -> ReferenceRateStatus:
+    """Whether reference valuations are on and how fresh the cached rates are. The cache belongs to the service, not to this ledger."""
     return await service.reference_rate_status()
 
 
 @router.post("/reference-rates/refresh")
 async def refresh_reference_rates(ledger_id: str, service: ViewServiceDep, caller: CallerDep) -> ReferenceRateStatus:
+    """Forget the cached rates, so the next valuation fetches fresh ones. The cache is shared by every ledger, and only the user may clear it."""
     if caller.actor == "agent":
         raise ApprovalRequired("reference rates are refreshed by the user")
     return await service.refresh_reference_rates(ledger_id)

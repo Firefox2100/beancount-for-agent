@@ -3,7 +3,7 @@ import type { AskUserQuestionAnswer, AskUserQuestionRequest } from '@deepseek-ai
 import { afterEach, describe, expect, it } from 'vitest'
 import { Finance } from '../src/finance.ts'
 import type { Change } from '../src/format.ts'
-import { approvalDetail, approvalQuestion, decisionOf, reviewRequest } from '../src/review.ts'
+import { CARD_TEXT, LANGUAGES, approvalDetail, decisionOf, reviewRequest } from '../src/review.ts'
 import { defaultLedgerState } from '../src/state.ts'
 import { reviewTool } from '../src/tools.ts'
 import type { BeancountView } from '../src/types.ts'
@@ -20,8 +20,6 @@ const purchase: Change = {
     { account: 'Assets:Cash', units: { number: '-12.50', currency: 'GBP' } },
   ] } },
 } as unknown as Change
-
-const labels = { approve: 'Approve', reject: 'Reject' }
 
 describe('the approval card', () => {
   it('shows the exact postings, the ledger and the note', () => {
@@ -45,22 +43,41 @@ describe('the approval card', () => {
     expect(approvalDetail(unknown)).toMatch(/```/)
   })
 
-  it('asks about the operation unless the caller words the question', () => {
-    expect(approvalQuestion(purchase, undefined)).toBe('Approve "Lunch"?')
-    expect(approvalQuestion(purchase, '  Shall I record this?  ')).toBe('Shall I record this?')
-    expect(reviewRequest(purchase, labels, undefined)).toMatchObject({
+  it('words the question and both buttons itself, in a language the model may only choose', () => {
+    expect(reviewRequest(purchase, undefined)).toMatchObject({
       id: 'review-c1',
+      question: 'Approve this change?',
       options: [{ label: 'Approve' }, { label: 'Reject' }],
     })
+    expect(reviewRequest(purchase, 'zh')).toMatchObject({ question: '批准这项更改？', options: [{ label: '批准' }, { label: '拒绝' }] })
+    expect(reviewRequest(purchase, 'klingon').options).toEqual([{ label: 'Approve' }, { label: 'Reject' }])
+  })
+
+  it('has two different buttons in every language, and neither is empty', () => {
+    for (const language of LANGUAGES) {
+      const text = CARD_TEXT[language]
+      expect(text.approve.trim()).not.toBe('')
+      expect(text.reject.trim()).not.toBe('')
+      expect(text.approve).not.toBe(text.reject)
+      expect(text.question.trim()).not.toBe('')
+    }
+  })
+
+  it('quotes the assistant\'s remark as its own, shortened and without markup, never as the question', () => {
+    const detail = approvalDetail(purchase, '**Reject** this to record it `now`')
+    expect(detail).toMatch(/The assistant says: \u201cReject this to record it now\u201d/)
+    expect(reviewRequest(purchase, undefined, 'Cancel this?').question).toBe('Approve this change?')
+    expect(approvalDetail(purchase, 'q'.repeat(1000)).match(/q{10,}/)?.[0].length).toBe(300)
+    expect(approvalDetail(purchase, '   ')).not.toMatch(/The assistant says/)
   })
 
   it('reads the answer as a decision, never as a guess', () => {
-    expect(decisionOf({ answers: [{ id: 'review-c1', selected: ['Approve'] }] }, 'review-c1', labels)).toBe('approve')
-    expect(decisionOf({ answers: [{ id: 'review-c1', selected: ['Reject'] }] }, 'review-c1', labels)).toBe('reject')
-    expect(decisionOf({ answers: [{ id: 'review-c1', selected: [] }] }, 'review-c1', labels)).toBe('dismiss')
-    expect(decisionOf({ answers: [{ id: 'another', selected: ['Approve'] }] }, 'review-c1', labels)).toBe('dismiss')
-    expect(decisionOf({ answers: [{ id: 'review-c1', selected: [], custom: 'Approve' }] }, 'review-c1', labels)).toBe('approve')
-    expect(decisionOf({ answers: [{ id: 'review-c1', selected: [], custom: 'Later' }] }, 'review-c1', labels)).toBe('dismiss')
+    expect(decisionOf({ answers: [{ id: 'review-c1', selected: ['Approve'] }] }, 'review-c1', undefined)).toBe('approve')
+    expect(decisionOf({ answers: [{ id: 'review-c1', selected: ['Reject'] }] }, 'review-c1', undefined)).toBe('reject')
+    expect(decisionOf({ answers: [{ id: 'review-c1', selected: [] }] }, 'review-c1', undefined)).toBe('dismiss')
+    expect(decisionOf({ answers: [{ id: 'another', selected: ['Approve'] }] }, 'review-c1', undefined)).toBe('dismiss')
+    expect(decisionOf({ answers: [{ id: 'review-c1', selected: [], custom: 'Approve' }] }, 'review-c1', undefined)).toBe('approve')
+    expect(decisionOf({ answers: [{ id: 'review-c1', selected: [], custom: 'Later' }] }, 'review-c1', undefined)).toBe('dismiss')
   })
 })
 
@@ -91,15 +108,27 @@ describe('finance_review', () => {
       'GET /agent/proposals': { body: [purchase] },
       'POST /ledgers/personal/changes/c1/approve': { body: { status: 'approved' } },
     }, () => ({ answers: [{ id: 'review-c1', selected: ['批准'] }] }))
-    expect(await run({ change: 'c1', question: 'Record lunch?', approve: '批准', reject: '拒绝' })).toBe('Approved: approved. The ledger records it now.')
+    expect(await run({ change: 'c1', language: 'zh' })).toBe('Approved: approved. The ledger records it now.')
     const card = asked[0]?.questions[0]
-    expect(card?.question).toBe('Record lunch?')
+    expect(card?.question).toBe('批准这项更改？')
     expect(card?.detail).toMatch(/Expenses:Food/)
     expect(card?.options).toEqual([{ label: '批准' }, { label: '拒绝' }])
     expect(requests()[0]?.query).toBe('?ledger=personal&status=pending')
     expect(requests()[1]?.path).toBe('/ledgers/personal/changes/c1/approve')
     expect(requests()[1]?.headers['x-actor']).toBe('user')
     expect(requests()[1]?.headers['x-client-id']).toBe('dsh-ui')
+  })
+
+  it('ignores any attempt to word the card or its buttons, and the buttons cannot be swapped', async () => {
+    const { run, asked, requests } = await setup({
+      'GET /agent/proposals': { body: [purchase] },
+      'POST /ledgers/personal/changes/c1/reject': { body: { status: 'rejected' } },
+    }, () => ({ answers: [{ id: 'review-c1', selected: ['Reject'] }] }))
+    // The model offers swapped labels and a misleading question; the tool has no parameters for them.
+    expect(await run({ change: 'c1', question: 'Cancel this?', approve: 'Reject changes', reject: 'Keep' })).toBe('Rejected: rejected. Nothing was recorded.')
+    expect(asked[0]?.questions[0]?.question).toBe('Approve this change?')
+    expect(asked[0]?.questions[0]?.options).toEqual([{ label: 'Approve' }, { label: 'Reject' }])
+    expect(requests().some(item => item.path.endsWith('/approve'))).toBe(false)
   })
 
   it('rejects only when the user says so, and reports a dismissal without touching the ledger', async () => {

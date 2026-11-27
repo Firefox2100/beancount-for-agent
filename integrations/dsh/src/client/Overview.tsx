@@ -3,6 +3,7 @@ import type { Group } from '../types.ts'
 import type { FinancialPosition, Interval, OverviewData, PositionTotal, ReferenceRateStatus } from './api.ts'
 import { AllocationChart, PositionChart } from './Charts.tsx'
 import type { BeancountKey } from './locales.ts'
+import { fixed, grouped, heldLine } from './money.ts'
 import css from './Page.module.css'
 
 type T = (key: BeancountKey, values?: Record<string, string | number>) => string
@@ -35,8 +36,8 @@ export interface OverviewProps {
   onInterval(interval: Interval): void
 }
 
-const amounts = (values: Record<string, string>): string => Object.entries(values).map(([currency, value]) => `${value} ${currency}`).join(' · ')
-const total = (item: PositionTotal | undefined): string => item?.reference_value == null ? '—' : `${item.reference_value.number} ${item.reference_value.currency}`
+const amounts = (values: Record<string, string>): string => heldLine(values)
+const total = (item: PositionTotal | undefined): string => item?.reference_value == null ? '—' : `${grouped(item.reference_value.number)} ${item.reference_value.currency}`
 
 /** A total is only convertible when every currency in it has a price today. */
 const convertible = (held: Record<string, number>, position: FinancialPosition | null): boolean =>
@@ -50,9 +51,9 @@ function summaryOf(held: Record<string, number>, position: FinancialPosition | n
       const rate = currency === base ? 1 : Number(position.rates?.[currency] ?? 0)
       return sum + number * rate
     }, 0)
-    return `≈ ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${base}`
+    return `≈ ${fixed(value)} ${base}`
   }
-  return Object.entries(held).map(([currency, number]) => `${number.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`).join(' · ') || '—'
+  return Object.entries(held).map(([currency, number]) => `${fixed(number)} ${currency}`).join(' · ') || '—'
 }
 
 export function Overview({ t, data, error, busy, position, problem, onLedger, onGroup, onRefresh, onRefreshRates, interval, onInterval }: OverviewProps) {
@@ -126,7 +127,7 @@ export function Overview({ t, data, error, busy, position, problem, onLedger, on
                   <span className={css.amount} title={convertible(held, position) ? t('approximateValues') : undefined}>{summaryOf(held, position)}</span>
                 </summary>
                 {rows.map((account) => {
-                  const amounts = Object.entries(balances.get(account.name) ?? {}).map(([currency, number]) => `${number} ${currency}`).join('\n')
+                  const amounts = Object.entries(balances.get(account.name) ?? {}).map(([currency, number]) => `${grouped(number)} ${currency}`).join('\n')
                   const bank = account.details.bank_name
                   return (
                     <div key={account.name} className={css.row}>

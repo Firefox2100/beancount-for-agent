@@ -8,7 +8,7 @@ import { defineTool, type ParameterSchemaSpec, type ToolDefinition } from '@deep
 import type { AskUserQuestionAnswer, AskUserQuestionRequest } from '@deepseek-ai/dsh-user-questions'
 import { FinanceError, type Finance } from './finance.ts'
 import * as format from './format.ts'
-import { decisionOf, reviewId, reviewRequest, type ApprovalLabels } from './review.ts'
+import { LANGUAGES, decisionOf, reviewId, reviewRequest } from './review.ts'
 import type { BeancountView, Group, StateRecord } from './types.ts'
 
 export interface ToolDeps {
@@ -148,7 +148,7 @@ export function financeTools(deps: ToolDeps): GroupedTool[] {
     textTool('record', 'finance_expense', 'Propose an expense paid from a bank, cash, wallet or card account. Account names can be short ("Current", "Food"). Give the amount in the currency it was paid in, as text such as "12.50 GBP".', {
       from_account: string('Where the money came from.', true),
       expense_account: string('What it was spent on.', true),
-      amount: string('Such as "12.50 GBP", or just "12.50" when the account holds one currency.', true),
+      amount: string('Such as "12.50 GBP", or just "12.50" when the account holds one currency. To add up or split, write the formula instead of working it out: "18.65 + 6.60 + 7.40 GBP", "48 / 3 GBP".', true),
       date: string('YYYY-MM-DD. Defaults to today.'),
       payee: string('Who was paid.'),
       narration: string('A few words about it.'),
@@ -172,7 +172,7 @@ export function financeTools(deps: ToolDeps): GroupedTool[] {
       to_account: string('Where it arrived.', true),
       amount: string('What left, such as "500 GBP".', true),
       received: string('What arrived, when the currency differs, such as "4800 CNY".'),
-      rate: string('Units of the received currency per one unit sent, instead of `received`.'),
+      rate: string('Units of the received currency per one unit sent, instead of `received`. May be a formula, such as "1 / 0.1145".'),
       date: string('YYYY-MM-DD. Defaults to today.'),
       narration: string('A few words about it.'),
       note: string('Why, for the user who approves it.'),
@@ -262,10 +262,6 @@ export interface ReviewDeps {
   ask(request: AskUserQuestionRequest): Promise<AskUserQuestionAnswer>
 }
 
-/** A card label: the model's own words in the conversation's language, or English. */
-const label = (value: unknown, fallback: string): string =>
-  typeof value === 'string' && value.trim() !== '' ? value.trim() : fallback
-
 /**
  * The one tool that ends a proposal's wait without the dock page: it shows the person a card with the exact postings
  * and acts on their answer. It is registered only when this profile has the user-question service, and it blocks
@@ -275,12 +271,11 @@ export function reviewTool(deps: ReviewDeps): ToolDefinition {
   const { finance } = deps
   return defineTool({
     name: 'finance_review',
-    description: 'Offer one of your pending proposals to the user as a card in the conversation, and act on their answer. The card shows the exact postings, and only the user can answer it: you cannot approve your own proposal. Use it right after proposing a change while the user is there, instead of telling them to open the page.',
+    description: 'Offer one of your pending proposals to the user as a card in the conversation, and act on their answer. The card shows the exact postings, and only the user can answer it: you cannot approve your own proposal, and you cannot word its question or buttons. Use it right after proposing a change while the user is there, instead of telling them to open the page.',
     parameters: {
       change: string('The proposal id from the proposal you just made. Defaults to your latest pending proposal.'),
-      question: string('The question line, in the language the user writes in. Defaults to "Approve this change?".'),
-      approve: string('The label for approving, in the user\'s language. Defaults to "Approve".'),
-      reject: string('The label for refusing, in the user\'s language. Defaults to "Reject".'),
+      language: { type: 'string', enum: LANGUAGES, description: 'The language the user writes in, for the card\'s fixed wording. Defaults to English.' },
+      says: string('An optional remark for the user, shown on the card as yours. It is not the question.'),
     },
     timeoutMs: 600_000,
     output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
@@ -302,11 +297,11 @@ export function reviewTool(deps: ReviewDeps): ToolDefinition {
             ? 'There is no pending proposal to review. Propose the change first, then offer the card.'
             : `There is no pending proposal "${wanted}". finance_proposals lists the pending ones.`)
         }
-        const labels: ApprovalLabels = { approve: label(values.approve, 'Approve'), reject: label(values.reject, 'Reject') }
-        const asked = typeof values.question === 'string' ? values.question : undefined
-        const answer = await deps.ask({ questions: [reviewRequest(chosen, labels, asked)], agent, signal: exec.signal })
+        const language = typeof values.language === 'string' ? values.language : undefined
+        const says = typeof values.says === 'string' ? values.says : undefined
+        const answer = await deps.ask({ questions: [reviewRequest(chosen, language, says)], agent, signal: exec.signal })
         const id = reviewId(chosen)
-        const decision = decisionOf(answer, id, labels)
+        const decision = decisionOf(answer, id, language)
         if (decision === 'dismiss') {
           const said = answer.answers.find(item => item.id === id)?.custom
           return said === undefined || said.trim() === ''

@@ -8,11 +8,39 @@ import { describeChange } from '@beancount-mcp/client'
 import type { AskUserQuestionAnswer, AskUserQuestionItem } from '@deepseek-ai/dsh-user-questions'
 import type { Amount, Change, Posting } from './format.ts'
 
-/** The two choices, in the language the person writes in. */
-export interface ApprovalLabels {
+/** The languages the harness ships. */
+export const LANGUAGES = ['en', 'zh', 'ja', 'es', 'fr', 'de', 'ru', 'pt'] as const
+export type Language = (typeof LANGUAGES)[number]
+
+/**
+ * What the card says. It is fixed by this plugin and never by the model: the question and the two labels are the
+ * boundary between a proposal and the ledger, so the agent that wrote the proposal cannot word them. The model may
+ * only choose among these languages, and add a remark that is shown as its own.
+ */
+export interface CardText {
   approve: string
   reject: string
+  question: string
+  says: string
 }
+
+export const CARD_TEXT: Record<Language, CardText> = {
+  en: { approve: 'Approve', reject: 'Reject', question: 'Approve this change?', says: 'The assistant says' },
+  zh: { approve: '批准', reject: '拒绝', question: '批准这项更改？', says: '助手的说明' },
+  ja: { approve: '承認', reject: '却下', question: 'この変更を承認しますか？', says: 'アシスタントのコメント' },
+  es: { approve: 'Aprobar', reject: 'Rechazar', question: '¿Aprobar este cambio?', says: 'El asistente dice' },
+  fr: { approve: 'Approuver', reject: 'Refuser', question: 'Approuver cette modification ?', says: 'L\'assistant dit' },
+  de: { approve: 'Genehmigen', reject: 'Ablehnen', question: 'Diese Änderung genehmigen?', says: 'Der Assistent sagt' },
+  ru: { approve: 'Одобрить', reject: 'Отклонить', question: 'Одобрить это изменение?', says: 'Ассистент сообщает' },
+  pt: { approve: 'Aprovar', reject: 'Rejeitar', question: 'Aprovar esta alteração?', says: 'O assistente diz' },
+}
+
+/** The card's text in a language, or English for one this plugin does not have. */
+export const cardText = (language: string | undefined): CardText =>
+  CARD_TEXT[(LANGUAGES as readonly string[]).includes(language ?? '') ? (language as Language) : 'en']
+
+/** The longest remark of the assistant a card quotes. */
+const SAYS_LIMIT = 300
 
 /** What the person decided, read from their answer. */
 export type Decision = 'approve' | 'reject' | 'dismiss'
@@ -78,8 +106,14 @@ function bodyOf(operation: Operation, change: Change): string[] {
   }
 }
 
+/** The assistant's remark as one quoted, plainly attributed line, so it cannot pass for the card's own words. */
+function remark(says: string | undefined, text: CardText): string[] {
+  const clean = (says ?? '').replace(/[`>*_]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, SAYS_LIMIT)
+  return clean === '' ? [] : ['', `${text.says}: \u201c${clean}\u201d`]
+}
+
 /** The card's body: what will be recorded, in markdown, never a paraphrase of the amount. */
-export function approvalDetail(change: Change): string {
+export function approvalDetail(change: Change, says?: string, text: CardText = CARD_TEXT.en): string {
   const operation = operationOf(change)
   const lines: string[] = [`Proposal \`${change.id}\` in ledger \`${change.ledger_id}\`.`]
   if (operation.kind === 'batch') {
@@ -93,32 +127,28 @@ export function approvalDetail(change: Change): string {
     lines.push('', ...bodyOf(operation, change))
   }
   if (change.note) lines.push('', `> ${change.note}`)
+  lines.push(...remark(says, text))
   lines.push('', 'Approving records exactly this; rejecting leaves the ledger untouched.')
   return lines.join('\n')
-}
-
-/** The question line: the model's own words when it gives any, otherwise the operation itself. */
-export function approvalQuestion(change: Change, asked: string | undefined): string {
-  if (asked !== undefined && asked.trim() !== '') return asked.trim()
-  const narration = operationOf(change).transaction?.narration
-  return narration === undefined || narration === '' ? 'Approve this change?' : `Approve "${narration}"?`
 }
 
 /** The question id, so the answer can be matched to this card alone. */
 export const reviewId = (change: Change): string => `review-${change.id}`
 
-/** The one question DSH renders as a card: the detail above, and the two choices. */
-export function reviewRequest(change: Change, labels: ApprovalLabels, question: string | undefined): AskUserQuestionItem {
+/** The one question DSH renders as a card: the detail above, and the two choices. Every word of it is fixed here. */
+export function reviewRequest(change: Change, language: string | undefined, says?: string): AskUserQuestionItem {
+  const text = cardText(language)
   return {
     id: reviewId(change),
-    question: approvalQuestion(change, question),
-    detail: approvalDetail(change),
-    options: [{ label: labels.approve }, { label: labels.reject }],
+    question: text.question,
+    detail: approvalDetail(change, says, text),
+    options: [{ label: text.approve }, { label: text.reject }],
   }
 }
 
 /** Read the person's answer: their chosen label, their own words, or a dismissal. */
-export function decisionOf(answer: AskUserQuestionAnswer, id: string, labels: ApprovalLabels): Decision {
+export function decisionOf(answer: AskUserQuestionAnswer, id: string, language: string | undefined): Decision {
+  const labels = cardText(language)
   const item = answer.answers.find(entry => entry.id === id)
   if (item === undefined) return 'dismiss'
   const chosen = item.custom !== undefined && item.custom.trim() !== '' ? item.custom.trim() : item.selected[0]

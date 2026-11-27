@@ -13,7 +13,7 @@ from beancount_mcp.models import (
     Posting,
     TransactionInput,
 )
-from beancount_mcp.models.common import AccountName, Amount, FiniteDecimal, Tag, Text
+from beancount_mcp.models.common import AccountName, Amount, Rate, Tag, Text
 from beancount_mcp.recipes.base import Recipe, RecipeContext
 from beancount_mcp.recipes.helpers import RATE_DESCRIPTION, DatedParams, Money, amount_of, exchange, negated
 from beancount_mcp.recipes.registry import RecipeRegistry
@@ -94,7 +94,7 @@ class Conversion(BaseModel):
     billed: Money | None = Field(
         default=None, description="Amount the statement bills for it, in a currency of the card. Give this or `rate`."
     )
-    rate: FiniteDecimal | None = Field(default=None, description=RATE_DESCRIPTION)
+    rate: Rate | None = Field(default=None, description=RATE_DESCRIPTION)
 
 
 class CloseStatementParams(DatedParams):
@@ -166,7 +166,7 @@ class Payment(BaseModel):
         default=None,
         description="Amount of the card bill it clears, in a currency of the card. Defaults to `paid` when that is a card currency.",
     )
-    rate: FiniteDecimal | None = Field(default=None, description=RATE_DESCRIPTION)
+    rate: Rate | None = Field(default=None, description=RATE_DESCRIPTION)
 
 
 class PayCardParams(DatedParams):

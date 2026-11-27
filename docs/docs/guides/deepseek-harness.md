@@ -44,7 +44,7 @@ These calls are made by the DSH host as you, with the stored token. They do not 
 
 ## Approving in the conversation
 
-A proposal can also be approved where it was made. After proposing a change, the model can call `finance_review`; DSH then shows a card in the conversation with the proposal's exact postings, the question and two choices, and the model waits for your answer. Choosing there records your decision through the same service call the page uses, as you.
+A proposal can also be approved where it was made. After proposing a change, the model can call `finance_review`; DSH then shows a card in the conversation with the proposal's exact postings and two choices, and the model waits for your answer. The question and both buttons are fixed by the plugin, in the language the model names from the eight DSH ships, so the agent that wrote a proposal cannot word the prompt that approves it. The model can add one short remark, which the card quotes as the assistant's own. Choosing there records your decision through the same service call the page uses, as you.
 
 The card is DSH's own question card, so it needs no extra permission and the plugin ships no UI for it. The page stays the place for everything still pending, for what other sessions proposed, and for approving several changes at once.
 

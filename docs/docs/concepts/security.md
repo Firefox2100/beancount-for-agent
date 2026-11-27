@@ -47,6 +47,14 @@ Sensitive bank details reach agents only as a mask. Fields that authorise a paym
 
 Every write is validated on a staged copy and refused if it introduces an error. A confused or malicious proposal cannot leave the ledger in a state Beancount rejects, and cannot be approved if the ledger moved on in a way that conflicts.
 
+## Approving inside a harness
+
+A harness plugin may let you approve without leaving the conversation. The DeepSeek Harness card does it with the question and both buttons **fixed by the plugin**: the model that proposed a change can pick the language and add a remark that is shown as its own, but cannot word the prompt or the choices. A card whose wording the proposer controls could be made to mislead, which would put approval back in the agent's hands.
+
+## Outbound requests
+
+The service makes no outbound request by default. With reference rates switched on (`BEANCOUNT_MCP_REFERENCE_RATES_ENABLED`) it asks a rate provider for exchange rates. The request names currency codes and dates only. See [Views](views.md#reference-values).
+
 ## What is out of scope
 
 - The service does not provide TLS. Put it behind something that does if it leaves the machine.

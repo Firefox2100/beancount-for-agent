@@ -110,3 +110,34 @@ def test_the_token_guards_this_surface_too(tmp_path):
     secured = TestClient(create_app(Settings(data_dir=tmp_path / "data", auth_token="t0ken")))
     assert secured.get("/agent/ledgers").status_code == 401
     assert secured.get("/agent/ledgers", headers={"Authorization": "Bearer t0ken"}).status_code == 200
+
+
+def test_amounts_may_be_formulas_that_the_service_works_out(api):
+    sent = api.post("/agent/expenses", json={"from_account": "Current", "expense_account": "Food",
+                                             "amount": "18.65 + 6.60 + 7.40", "date": "2026-02-01"}, headers=CLIENT)
+    assert sent.status_code == 201, sent.text
+    postings = sent.json()["operation"]["transaction"]["postings"]
+    assert {p["account"]: p["units"]["number"] for p in postings} == {"Expenses:Food": "32.65", "Assets:Bank:Current": "-32.65"}
+
+    split = api.post("/agent/expenses", json={"from_account": "Current", "expense_account": "Food",
+                                              "amount": "48.00 / 3 GBP", "date": "2026-02-02"}, headers=CLIENT)
+    assert split.json()["operation"]["transaction"]["postings"][0]["units"] == {"number": "16.00", "currency": "GBP"}
+
+
+def test_a_formula_that_cannot_be_worked_out_says_what_to_send(api):
+    mixed = api.post("/agent/expenses", json={"from_account": "Current", "expense_account": "Food", "amount": "10 GBP + 5 USD"})
+    assert mixed.status_code == 422 and "cannot mix currencies" in str(mixed.json()["detail"])
+    broken = api.post("/agent/expenses", json={"from_account": "Current", "expense_account": "Food", "amount": "10 / 0"})
+    assert broken.status_code == 422 and "division by zero" in str(broken.json()["detail"])
+    words = api.post("/agent/expenses", json={"from_account": "Current", "expense_account": "Food", "amount": "ten pounds"})
+    assert words.status_code == 422
+    assert api.get("/ledgers/home/balances").json() == []
+
+
+def test_a_rate_may_be_a_formula_too(api):
+    api.post("/ledgers/home/accounts", json={"account": "Assets:BoC:Current", "date": "2026-01-01", "currencies": ["CNY"], "type": "checking"})
+    moved = api.post("/agent/transfers", json={"from_account": "Assets:Bank:Current", "to_account": "BoC",
+                                               "amount": "100 GBP", "rate": "8.7 + 0.03", "date": "2026-02-03"}, headers=CLIENT)
+    assert moved.status_code == 201, moved.text
+    postings = moved.json()["operation"]["transaction"]["postings"]
+    assert {p["account"]: p["units"] for p in postings}["Assets:BoC:Current"] == {"number": "873.00", "currency": "CNY"}

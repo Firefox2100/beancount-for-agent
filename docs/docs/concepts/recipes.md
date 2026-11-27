@@ -23,6 +23,7 @@ Agents fail on avoidable details, so recipes ask for the least and do the arithm
 
 - The `date` defaults to today.
 - An amount may be an object, text such as `"12.50 USD"`, or a bare number when the account holds exactly one currency. The recipe knows the direction, so it ignores the sign. Zero is refused.
+- **Formulas.** Wherever an amount or a rate is expected, text may be a formula with `+ - * /` and brackets, such as `18.65 + 6.60 + 7.40 GBP`, `48 / 3 GBP` or `1 / 8.73`. The service works it out exactly with decimal arithmetic, so an agent copies the numbers it sees instead of adding them up. The currency is written once (or repeated identically), and two different currencies in one formula are refused. The result is rounded half-even to the most decimal places written in the formula, and to at least two (a rate keeps up to eight). Exponents, percent signs, powers, names and functions are not accepted.
 - For two linked amounts, you may send either value. Examples include a converted amount or a `rate`, gross or net pay, principal or total repayment, and price per unit or total.
 - Defaults come from the profile when available, including the autopay source, interest account, cash account and gains account. The error names any missing setting.
 - Agent tools match account names loosely. They try an exact name, a case-insensitive match, a unique trailing segment (`Checking`, `Bank:Checking`), then a unique word in the name or description. Ambiguous and unknown names fail with a list of candidates. The user-facing REST API stays strict.

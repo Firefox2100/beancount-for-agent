@@ -7,7 +7,6 @@ so there is deliberately no approve or reject tool here.
 
 import datetime as dt
 from collections.abc import Awaitable, Callable
-from decimal import Decimal
 from functools import wraps
 from typing import Annotated, Any, Literal
 
@@ -30,6 +29,7 @@ from beancount_mcp.models import (
     Transaction,
     TransactionInput,
 )
+from beancount_mcp.models.common import Rate
 from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, PoolStatus
 from beancount_mcp.recipes.helpers import Money
 from beancount_mcp.services.agent import AgentService
@@ -42,7 +42,9 @@ proposal was made and give its id. Start with list_accounts to see account names
 and the recipes each supports. Prefer record_expense, record_income and record_transfer
 for everyday events, and use list_recipes then perform_recipe for anything account-specific
 such as card statements, loan repayments, reimbursements or trades. Amounts can be written
-like "12.50 USD". The `ledger` argument can be left out when only one ledger exists.
+like "12.50 USD", or as a formula such as "18.65 + 6.60 + 7.40 GBP" (use + - * / and brackets):
+the service works it out exactly, so never add up or convert numbers yourself. A `rate` can be
+a formula too, such as 1 / 8.73. The `ledger` argument can be left out when only one ledger exists.
 """
 
 Ledger = str | None
@@ -178,7 +180,7 @@ def create_mcp(agent: AgentService, raw_transactions: bool = False) -> FastMCP:
         amount: Money,
         ledger: Ledger = None,
         received: Money | None = None,
-        rate: Decimal | None = None,
+        rate: Rate | None = None,
         date: dt.date | None = None,
         narration: str = "",
         note: Note = None,

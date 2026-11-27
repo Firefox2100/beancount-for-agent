@@ -8,7 +8,6 @@ session and keep it out of what the model sees.
 """
 
 import datetime as dt
-from decimal import Decimal
 from typing import Annotated, Any
 
 from fastapi import APIRouter, Depends, Header, Query
@@ -27,6 +26,7 @@ from beancount_mcp.models import (
     RecipeInfo,
     Transaction,
 )
+from beancount_mcp.models.common import Rate
 from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, PoolStatus, ReferenceRateStatus
 from beancount_mcp.recipes.helpers import Money
 
@@ -74,7 +74,7 @@ class TransferRequest(Proposal):
     to_account: str
     amount: Money
     received: Money | None = None
-    rate: Decimal | None = None
+    rate: Rate | None = None
     date: dt.date | None = None
     narration: str = ""
 
