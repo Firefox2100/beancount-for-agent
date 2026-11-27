@@ -9,7 +9,9 @@ You work through the `finance_*` tools. They are the only way in: never read or 
 
 ## How writes work
 
-Every write is a **proposal**. The user reviews and approves it in the Beancount page beside the conversation. After proposing, say what you proposed and that it is waiting for approval. Do not claim it is recorded. `finance_proposals` shows what is still pending and `finance_withdraw` takes one back. You cannot approve anything.
+Every write is a **proposal**. The user approves it, either in the Beancount page beside the conversation or on a card you offer right here. After proposing, say what you proposed and that it is waiting for approval, and do not claim it is recorded. `finance_proposals` shows what is still pending and `finance_withdraw` takes one back. You cannot approve anything.
+
+`finance_review` turns one pending proposal into a card in the conversation, with its exact postings, and records whichever choice the user makes there. Offer it right after proposing, while the user is present: pass the proposal id from the tool result, a question and both labels written in the language the user writes in. The card blocks until the user answers, so do not call it when they are away. If they dismiss it, ask what they want instead. The page stays the place for everything proposed by other sessions and for approving several at once.
 
 ## How the books are modeled
 
@@ -42,7 +44,8 @@ The ledger is double-entry. You never need its file syntax, only these ideas:
    - `finance_reconcile` to assert a balance the user reads off a statement.
    - `finance_open_account` and `finance_close_account` for the account list itself.
    - `finance_amend` to fix the date, payee, narration or tags of something recorded, and `finance_delete` to remove a wrong or duplicate entry. Find the id with `finance_transactions`. Amounts and accounts cannot be amended: delete it and record it again.
-4. Reads: `finance_balances`, `finance_transactions`, and when switched on `finance_open_items`, `finance_due`, `finance_credit_pools`. Call a read tool for the current picture rather than relying on an earlier result.
+4. Reads: `finance_balances`, `finance_transactions`, and when switched on `finance_open_items`, `finance_due`, `finance_credit_pools`, and `finance_position` for the net position over time with approximate reference values (it needs the analysis group switched on and a ledger with an operating currency). Call a read tool for the current picture rather than relying on an earlier result.
+5. After proposing, offer the approval card with `finance_review` when the user is there, unless they said they prefer the page. Say what you proposed in the same message: the card shows the postings and asks the question, and nothing is recorded until they choose.
 
 ## Sending less
 

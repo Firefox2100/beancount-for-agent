@@ -38,9 +38,15 @@ The Beancount tab of DSH's settings menu holds:
 Open the right dock's guide and choose **Beancount**. It has two tabs, and refreshes when it opens, when a turn ends, and when the ledger or a tool group changes. Anything you have typed and not sent is kept across those refreshes.
 
 - The overview contains the ledger switcher, tool-group switches and open accounts. Accounts are grouped by Assets, Liabilities, Equity, Income and Expenses, with their balances.
-- The approval tab shows what is waiting, the exact postings and who proposed the change. You can add a note before choosing **Approve** or **Reject**.
+- The approval tab shows what is waiting, the exact postings and who proposed the change. You can add a note before choosing **Approve** or **Reject**. It lists everything pending, including what other sessions or agents proposed.
 
 These calls are made by the DSH host as you, with the stored token. They do not appear in the conversation and the model never sees them.
+
+## Approving in the conversation
+
+A proposal can also be approved where it was made. After proposing a change, the model can call `finance_review`; DSH then shows a card in the conversation with the proposal's exact postings, the question and two choices, and the model waits for your answer. Choosing there records your decision through the same service call the page uses, as you.
+
+The card is DSH's own question card, so it needs no extra permission and the plugin ships no UI for it. The page stays the place for everything still pending, for what other sessions proposed, and for approving several changes at once.
 
 ## The session holds the ledger
 
@@ -52,9 +58,9 @@ All tools are prefixed `finance_`. Reading is always on; the others belong to gr
 
 | Always on | `record` group (on by default) | `analysis` group (off until you turn it on) |
 | --- | --- | --- |
-| `finance_ledgers`, `finance_use_ledger`, `finance_create_ledger`, `finance_accounts`, `finance_balances`, `finance_transactions`, `finance_proposals` | `finance_expense`, `finance_income`, `finance_transfer`, `finance_reconcile`, `finance_recipes`, `finance_recipe`, `finance_open_account`, `finance_close_account`, `finance_amend`, `finance_delete`, `finance_withdraw` | `finance_open_items`, `finance_due`, `finance_credit_pools` |
+| `finance_ledgers`, `finance_use_ledger`, `finance_create_ledger`, `finance_accounts`, `finance_balances`, `finance_transactions`, `finance_proposals`, `finance_review` | `finance_expense`, `finance_income`, `finance_transfer`, `finance_reconcile`, `finance_recipes`, `finance_recipe`, `finance_open_account`, `finance_close_account`, `finance_amend`, `finance_delete`, `finance_withdraw` | `finance_position`, `finance_open_items`, `finance_due`, `finance_credit_pools` |
 
-There is no approve tool. Every write is a proposal, and the tool reply tells the model that it is waiting for you. When a group is switched, DSH notes in the conversation that a tool was added or removed.
+No tool can approve a change on its own. `finance_review` is the only one that ends a proposal's wait, and it does so only after you answer its card; every other write is a proposal whose reply tells the model that it is waiting for you. When a group is switched, DSH notes in the conversation that a tool was added or removed.
 
 Switch groups in the Overview tab or with `/finance tools <record|analysis> <on|off>`. `/finance status` shows the ledger and the groups.
 

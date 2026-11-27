@@ -189,7 +189,7 @@ async def financial_position(
 
 @router.get("/reference-rates/status")
 async def reference_rate_status(agent: AgentServiceDep) -> ReferenceRateStatus:
-    return agent.reference_rate_status()
+    return await agent.reference_rate_status()
 
 
 @router.get("/proposals")

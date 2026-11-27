@@ -1,9 +1,21 @@
+import { useId } from 'react'
 import type { Group } from '../types.ts'
-import type { Interval, OverviewData, PositionTotal } from './api.ts'
+import type { Interval, OverviewData, PositionTotal, ReferenceRateStatus } from './api.ts'
 import { AllocationChart, PositionChart } from './Charts.tsx'
+import type { BeancountKey } from './locales.ts'
 import css from './Page.module.css'
 
-type T = (key: any, values?: Record<string, string | number>) => string
+type T = (key: BeancountKey, values?: Record<string, string | number>) => string
+
+/** The service reports its own vocabulary; the page shows the same word in the reader's language. */
+const RATE_STATE: Record<ReferenceRateStatus['state'], BeancountKey> = {
+  disabled: 'rateDisabled',
+  empty: 'rateEmpty',
+  fresh: 'rateFresh',
+  stale: 'rateStale',
+  refreshing: 'rateRefreshing',
+  unavailable: 'rateUnavailable',
+}
 
 const ROOTS = ['Assets', 'Liabilities', 'Equity', 'Income', 'Expenses'] as const
 
@@ -15,6 +27,7 @@ export interface OverviewProps {
   onLedger(ledger: string): void
   onGroup(group: Group, enabled: boolean): void
   onRefresh(): void
+  onRefreshRates(): void
   interval: Interval
   onInterval(interval: Interval): void
 }
@@ -22,7 +35,8 @@ export interface OverviewProps {
 const amounts = (values: Record<string, string>): string => Object.entries(values).map(([currency, value]) => `${value} ${currency}`).join(' · ')
 const total = (item: PositionTotal | undefined): string => item?.reference_value == null ? '—' : `${item.reference_value.number} ${item.reference_value.currency}`
 
-export function Overview({ t, data, error, busy, onLedger, onGroup, onRefresh, interval, onInterval }: OverviewProps) {
+export function Overview({ t, data, error, busy, onLedger, onGroup, onRefresh, onRefreshRates, interval, onInterval }: OverviewProps) {
+  const page = useId()
   const balances = new Map((data?.balances ?? []).map(item => [item.account, item.balances]))
   const chosen = data?.state.ledger ?? data?.active ?? ''
   const groups = data?.state.groups
@@ -45,9 +59,9 @@ export function Overview({ t, data, error, busy, onLedger, onGroup, onRefresh, i
       {data?.position !== null && data?.position !== undefined && (() => {
         const latest = data.position.points.at(-1)
         return <>
-          <section className={css.sectionBlock} aria-labelledby="financial-position-title">
+          <section className={css.sectionBlock} aria-labelledby={`${page}-position`}>
             <div className={css.sectionHead}>
-              <div><h2 id="financial-position-title" className={css.sectionTitle}>{t('financialPosition')}</h2><p className={css.muted}>{t('referenceIn', { currency: data.position.base_currency })}</p></div>
+              <div><h2 id={`${page}-position`} className={css.sectionTitle}>{t('financialPosition')}</h2><p className={css.muted}>{t('referenceIn', { currency: data.position.base_currency })}</p></div>
               <div className={css.segmented} aria-label={t('period')}>
                 <button type="button" aria-pressed={interval === 'week'} onClick={() => { onInterval('week') }}>{t('weekly')}</button>
                 <button type="button" aria-pressed={interval === 'month'} onClick={() => { onInterval('month') }}>{t('monthly')}</button>
@@ -59,9 +73,12 @@ export function Overview({ t, data, error, busy, onLedger, onGroup, onRefresh, i
               <div><span>{t('netPosition')}</span><strong>{total(latest?.net)}</strong></div>
             </div>
             <PositionChart points={data.position.points} t={t} />
-            <p className={css.rateNote}>{t('approximateValues')} · {t('rateState', { state: data.position.valuation.state })}{data.position.valuation.observed_on == null ? '' : ` · ${data.position.valuation.observed_on}`}</p>
+            <p className={css.rateNote}>
+              <span>{t('approximateValues')} · {t(RATE_STATE[data.position.valuation.state])}{data.position.valuation.observed_on == null ? '' : ` · ${data.position.valuation.observed_on}`}</span>
+              <button type="button" className={css.linkButton} disabled={busy} onClick={onRefreshRates}>{t('refreshRates')}</button>
+            </p>
           </section>
-          {data.position.allocation.length > 0 && <section className={css.sectionBlock} aria-labelledby="allocation-title"><h2 id="allocation-title" className={css.sectionTitle}>{t('assetAllocation')}</h2><AllocationChart items={data.position.allocation} t={t} /></section>}
+          {data.position.allocation.length > 0 && <section className={css.sectionBlock} aria-labelledby={`${page}-allocation`}><h2 id={`${page}-allocation`} className={css.sectionTitle}>{t('assetAllocation')}</h2><AllocationChart items={data.position.allocation} t={t} /></section>}
         </>
       })()}
 

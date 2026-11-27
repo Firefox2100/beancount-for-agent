@@ -1,14 +1,14 @@
 /**
- * What the dock page asks of the host. These run as the signed-in user, never as the model, and approving lives
- * only here: the model's tools have no way to do it. Each handler is a plain function of a Request, so it is tested
- * without DSH.
+ * What the dock page asks of the host. These run as the signed-in user, never as the model. Approving from the page
+ * happens only here; approving from the conversation goes through `finance_review` (tools.ts), which also resolves the
+ * service call as the user and only after they answered its card. Each handler is a plain function of a Request, so it
+ * is tested without DSH.
  */
 import { describeChange } from '@beancount-mcp/client'
 import { FinanceError, type Finance } from './finance.ts'
-import type { AccountInfo, Balance, Change, LedgerInfo } from './format.ts'
+import type { AccountInfo, Balance, Change, DueItem, FinancialPosition, LedgerInfo } from './format.ts'
 import { isGroup } from './state.ts'
 import type { BeancountView, StateRecord } from './types.ts'
-import type { DueItem, FinancialPosition } from './client/api.ts'
 
 export interface SessionHandle {
   state(): BeancountView
@@ -96,11 +96,13 @@ export function createRoutes(deps: RouteDeps): Route[] {
       }
       const active = state.ledger ?? (ledgers.length === 1 ? ledgers[0]?.id ?? null : null)
       if (active === null) return json({ state, service: 'ok', ledgers, active, accounts: [], balances: [], position: null, due: [] })
+      // The reference valuations need an operating currency and a reachable rate provider, and a service older than
+      // this route answers 404. Neither may cost the page its accounts and balances, so those two stay required only.
       const [accounts, balances, position, due] = await Promise.all([
         finance.user<AccountInfo[]>('GET', `/ledgers/${id(active)}/accounts`),
         finance.user<Balance[]>('GET', `/ledgers/${id(active)}/balances`),
-        finance.user<FinancialPosition>('GET', `/ledgers/${id(active)}/financial-position`, { query: { interval, points: 12 } }),
-        finance.user<DueItem[]>('GET', `/ledgers/${id(active)}/due`, { query: { within_days: 30 } }),
+        finance.user<FinancialPosition>('GET', `/ledgers/${id(active)}/financial-position`, { query: { interval, points: 12 } }).catch(() => null),
+        finance.user<DueItem[]>('GET', `/ledgers/${id(active)}/due`, { query: { within_days: 30 } }).catch(() => []),
       ])
       return json({ state, service: 'ok', ledgers, active, accounts: accounts.filter(account => !account.close_date), balances, position, due })
     }),
@@ -147,11 +149,16 @@ export function createRoutes(deps: RouteDeps): Route[] {
       const credential = await deps.credential.status()
       try {
         const ledgers = await finance.user<LedgerInfo[]>('GET', '/agent/ledgers')
-        const reference = await finance.user<import('./client/api.ts').ReferenceRateStatus>('GET', '/agent/reference-rates/status').catch(() => undefined)
+        const reference = await finance.user<FinancialPosition['valuation']>('GET', '/agent/reference-rates/status').catch(() => undefined)
         return json({ ok: true, ledgers: ledgers.map(item => item.id), credential, ...(reference === undefined ? {} : { reference }) })
       } catch (error) {
         return json({ ok: false, message: error instanceof Error ? error.message : String(error), status: error instanceof FinanceError ? error.status ?? null : null, credential })
       }
+    }),
+
+    route('/refresh-rates', ['POST'], async (request) => {
+      const values = await body(request)
+      return json(await finance.user<FinancialPosition['valuation']>('POST', `/ledgers/${id(text(values, 'ledger'))}/reference-rates/refresh`))
     }),
 
     route('/credential', ['GET', 'POST'], async (request) => {

@@ -46,7 +46,8 @@ A marketplace file at the repository root (`.claude-plugin/marketplace.json`) ma
 | `finance.ts` | The service wrapper. Resolves the token from the credential store on each call, and identifies the model's calls as an agent in its session and the page's calls as the user. |
 | `format.ts` | Short plain text for the model. |
 | `types.ts`, `state.ts` | Session state: the ledger and the tool groups, kept in the plugin's storage domain (`store.ts`, one record per session id); the session projection only counts ended turns, which is derived from the log. |
-| `tools.ts` | The `finance_*` tools, grouped. |
+| `tools.ts` | The `finance_*` tools, grouped, and `finance_review`, the one that offers a pending proposal to the person as a card. |
+| `review.ts` | What that card says (the exact postings, in markdown) and what the person's answer means. Rendered by DSH's own question card. |
 | `guard.ts` | The `tools/pre-execute` policy. |
 | `routes.ts` | What the dock page calls, as functions of a `Request`. Registered under DSH's authenticated `/api` channel. |
 | `store.ts` | The storage domain the ledger and the tool groups live in. DSH's session log keeps plugin records only for its own experimental packages, so plugin data goes here. |

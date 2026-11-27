@@ -90,6 +90,11 @@ export function Page({ useProjection, sessionId, drafts, t }: Props) {
           onInterval={(next) => { drafts.set(intervalKey, next); setIntervalState(next) }}
           onLedger={(next) => { void change(() => postJson('/ledger', { session, ledger: next })) }}
           onGroup={(group: Group, enabled) => { void change(() => postJson('/groups', { session, group, enabled })) }}
+          onRefreshRates={() => {
+            const ledger = overview?.state.ledger ?? overview?.active ?? null
+            if (ledger === null) return
+            void change(() => postJson('/refresh-rates', { ledger }))
+          }}
         />
       )}
       {tab === 'approval' && (

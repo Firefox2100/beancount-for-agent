@@ -81,6 +81,37 @@ class ReferenceRateService:
                 return self._result(cached, base, quotes, "stale", str(error))
             return RateResult({}, ReferenceRateStatus(enabled=True, base_currency=base, state="unavailable", missing_currencies=sorted(quotes), message=str(error)))
 
+    def rates_for(self, base: str, quotes: set[str], dates: list[dt.date]) -> dict[dt.date, RateResult]:
+        """The rates of several dates in as few requests as possible: one range request per gap."""
+        quotes = {quote for quote in quotes if quote != base}
+        if not quotes or not self._enabled:
+            return {on: self.rates(base, quotes, on) for on in dates}
+        cached = self._read()
+        now = dt.datetime.now(dt.UTC)
+        results: dict[dt.date, RateResult] = {}
+        missing: list[dt.date] = []
+        for on in dates:
+            row = cached.get(self._key(base, quotes, on))
+            if row is not None and now - dt.datetime.fromisoformat(row["fetched_at"]) <= self._fresh:
+                results[on] = self._result(row, base, quotes, "fresh")
+            else:
+                missing.append(on)
+        if len(missing) > 1 and max(missing) > min(missing):
+            try:
+                rows = self._fetch_range(base, quotes, min(missing), max(missing))
+                for on in missing:
+                    row = rows.get(on.isoformat())
+                    if row is None:
+                        continue
+                    self._store(self._key(base, quotes, on), row)
+                    results[on] = self._result(row, base, quotes, "fresh")
+            except Exception as error:  # noqa: BLE001 - a failed batch falls back to single days
+                log.warning("reference rate range fetch failed", extra={"base": base, "from": str(min(missing)), "to": str(max(missing)), "error": str(error)})
+        for on in missing:
+            if on not in results:
+                results[on] = self.rates(base, quotes, on)
+        return results
+
     def refresh(self) -> ReferenceRateStatus:
         with self._lock:
             self._write({})
@@ -104,26 +135,37 @@ class ReferenceRateService:
         threading.Thread(target=run, name="reference-rates", daemon=True).start()
 
     def _fetch(self, base: str, quotes: set[str], on: dt.date) -> dict:
-        query = urllib.parse.urlencode({"base": base, "quotes": ",".join(sorted(quotes)), "date": on.isoformat()})
-        request = urllib.request.Request(f"{self._url}/rates?{query}", headers={"accept": "application/json", "user-agent": "beancount-mcp"})
+        body = self._request({"base": base, "quotes": ",".join(sorted(quotes)), "date": on.isoformat()})
+        rates: dict[str, str] = {}
+        dates: list[str] = []
+        for quoted_on, currency, rate in _inverted(base, quotes, body):
+            rates[currency] = format(rate, "f")
+            dates.append(quoted_on)
+        return self._row(base, max(dates) if dates else on.isoformat(), rates)
+
+    def _fetch_range(self, base: str, quotes: set[str], start: dt.date, end: dt.date) -> dict[str, dict]:
+        """Every date in one request, so a twelve-point chart costs one round trip instead of twelve."""
+        body = self._request({"base": base, "quotes": ",".join(sorted(quotes)), "from": start.isoformat(), "to": end.isoformat()})
+        by_date: dict[str, dict[str, str]] = {}
+        for quoted_on, currency, rate in _inverted(base, quotes, body):
+            by_date.setdefault(quoted_on, {})[currency] = format(rate, "f")
+        return {quoted_on: self._row(base, quoted_on, rates) for quoted_on, rates in by_date.items()}
+
+    def _request(self, parameters: dict[str, str]) -> list:
+        query = urllib.parse.urlencode(parameters)
+        request = urllib.request.Request(
+            f"{self._url}/rates?{query}",
+            headers={"accept": "application/json", "user-agent": "beancount-mcp"},
+        )
         with urllib.request.urlopen(request, timeout=10) as response:
             body = json.load(response)
         if not isinstance(body, list):
             raise ValueError("Frankfurter returned an unexpected response")
-        rates: dict[str, str] = {}
-        dates: list[str] = []
-        for item in body:
-            item_base = str(item.get("base", "")).upper() if isinstance(item, dict) else ""
-            item_quote = str(item.get("quote", "")).upper() if isinstance(item, dict) else ""
-            if isinstance(item, dict) and item_base == base.upper() and item_quote in quotes:
-                quoted = Decimal(str(item["rate"]))
-                if quoted == 0:
-                    continue
-                # Frankfurter returns quote units per one base unit. The service stores
-                # base units per one held-currency unit so valuation is multiplication.
-                rates[item_quote] = format(Decimal(1) / quoted, "f")
-                dates.append(str(item["date"]))
-        return {"base": base, "date": max(dates) if dates else on.isoformat(), "fetched_at": dt.datetime.now(dt.UTC).isoformat(), "rates": rates}
+        return body
+
+    @staticmethod
+    def _row(base: str, quoted_on: str, rates: dict[str, str]) -> dict:
+        return {"base": base, "date": quoted_on, "fetched_at": dt.datetime.now(dt.UTC).isoformat(), "rates": rates}
 
     def _result(self, row: dict, base: str, quotes: set[str], state: str, message: str | None = None) -> RateResult:
         rates = {currency: Decimal(value) for currency, value in row.get("rates", {}).items() if currency in quotes}
@@ -156,3 +198,24 @@ class ReferenceRateService:
             rows = self._read()
             rows[key] = row
             self._write(rows)
+
+
+def _inverted(base: str, quotes: set[str], body: list) -> list[tuple[str, str, Decimal]]:
+    """The rows that answer this request, as (date, currency, base units per one held unit).
+
+    Frankfurter returns quote units per one base unit; the cache stores the inverse so valuation is a
+    multiplication. Rows for another base or a currency nobody asked for are dropped.
+    """
+    converted = []
+    for item in body:
+        if not isinstance(item, dict):
+            continue
+        item_base = str(item.get("base", "")).upper()
+        item_quote = str(item.get("quote", "")).upper()
+        if item_base != base.upper() or item_quote not in quotes:
+            continue
+        quoted = Decimal(str(item["rate"]))
+        if quoted == 0:
+            continue
+        converted.append((str(item["date"]), item_quote, Decimal(1) / quoted))
+    return converted

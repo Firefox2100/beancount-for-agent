@@ -12,13 +12,14 @@ import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type {} from '@deepseek-ai/dsh-session-projection'
 import type {} from '@deepseek-ai/dsh-skill'
 import type {} from '@deepseek-ai/dsh-storage-domain'
+import type {} from '@deepseek-ai/dsh-user-questions'
 import { Finance } from './finance.ts'
 import { judge } from './guard.ts'
 import { createRoutes, type CredentialStatus, type SessionHandle } from './routes.ts'
 import { Config, settingsOf, type Accessors } from './settings.ts'
 import { applyChange, defaultLedgerState, fold, initialState, isGroup, viewSchema } from './state.ts'
 import { ledgerDomain } from './store.ts'
-import { financeTools } from './tools.ts'
+import { financeTools, reviewTool } from './tools.ts'
 import type { BeancountView, LedgerState, StateRecord } from './types.ts'
 
 export { Config }
@@ -90,6 +91,17 @@ export async function apply(ctx: Context, config: Accessors): Promise<void> {
       group === 'core' ? undefined : { when: ({ agent }) => stateOf(agent.session).groups[group] },
     )
   }
+
+  // The card rides DSH's own user-question service, which every dsh-base profile mounts. Without it the tool is not
+  // registered at all, and the dock page stays the only way to approve.
+  ctx.inject(['userQuestions'], (scoped) => {
+    const definition = reviewTool({
+      finance,
+      stateOf: agent => stateOf(agent.session),
+      ask: request => scoped.userQuestions.ask(request),
+    })
+    scoped.effect(() => scoped.tools.register(definition), 'dsh-beancount: review card')
+  })
 
   ctx.on('tools/pre-execute', async (exec, next) => {
     const current = settings()

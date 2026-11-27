@@ -44,11 +44,11 @@ async def financial_position(
 
 @router.get("/reference-rates/status")
 async def reference_rate_status(service: ViewServiceDep) -> ReferenceRateStatus:
-    return service.reference_rate_status()
+    return await service.reference_rate_status()
 
 
 @router.post("/reference-rates/refresh")
 async def refresh_reference_rates(service: ViewServiceDep, caller: CallerDep) -> ReferenceRateStatus:
     if caller.actor == "agent":
         raise ApprovalRequired("reference rates are refreshed by the user")
-    return service.refresh_reference_rates()
+    return await service.refresh_reference_rates()

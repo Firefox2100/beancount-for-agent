@@ -138,6 +138,17 @@ describe('dock routes', () => {
     expect(answer.body).toMatchObject({ ok: false, message: 'missing or invalid bearer token', status: 401 })
   })
 
+  it('refresh reference rates as the user when the page asks for it', async () => {
+    const { call } = await setup({
+      'POST /ledgers/personal/reference-rates/refresh': { body: { provider: 'frankfurter', enabled: true, state: 'empty', covered_currencies: [], missing_currencies: [] } },
+    })
+    const result = await call('/refresh-rates', { method: 'POST', body: { ledger: 'personal' } })
+    expect(result.status).toBe(200)
+    expect(result.body.state).toBe('empty')
+    expect(service?.requests[0]?.headers['x-actor']).toBe('user')
+    expect((await call('/refresh-rates', { method: 'POST', body: {} })).status).toBe(400)
+  })
+
   it('store and remove the token without ever returning it', async () => {
     const { call } = await setup({})
     expect((await call('/credential')).body).toEqual({ configured: false, writable: true })

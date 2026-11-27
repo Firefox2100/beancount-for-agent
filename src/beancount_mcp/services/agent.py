@@ -128,8 +128,8 @@ class AgentService:
     async def financial_position(self, ledger: str | None, interval: str, points: int) -> FinancialPosition:
         return await self._views.financial_position(await self.resolve_ledger(ledger), interval, points)
 
-    def reference_rate_status(self) -> ReferenceRateStatus:
-        return self._views.reference_rate_status()
+    async def reference_rate_status(self) -> ReferenceRateStatus:
+        return await self._views.reference_rate_status()
 
     async def submit(
         self,

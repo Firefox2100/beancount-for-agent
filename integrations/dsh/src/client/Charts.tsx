@@ -1,7 +1,12 @@
 import type { AllocationItem, PositionPoint } from './api.ts'
+import type { BeancountKey } from './locales.ts'
 import css from './Page.module.css'
 
-type T = (key: any, values?: Record<string, string | number>) => string
+type T = (key: BeancountKey, values?: Record<string, string | number>) => string
+
+/** The drawing area inside the 320x150 viewBox, leaving room for the axis labels underneath. */
+const TOP = 22
+const BOTTOM = 126
 
 const number = (value: string | undefined): number | null => {
   if (value === undefined) return null
@@ -12,8 +17,21 @@ const number = (value: string | undefined): number | null => {
 const reference = (point: PositionPoint, key: 'assets' | 'liabilities' | 'net'): number | null =>
   number(point[key].reference_value?.number)
 
-const path = (values: Array<number | null>, maximum: number): string => values
-  .map((value, index) => value === null ? null : `${index === 0 || values[index - 1] === null ? 'M' : 'L'} ${16 + index * (288 / Math.max(values.length - 1, 1))} ${126 - value / maximum * 104}`)
+/**
+ * One scale for all three series so they stay comparable. It always contains zero: a net position below zero then
+ * draws below the zero line instead of leaving the chart.
+ */
+const scaleOf = (values: Array<number | null>) => {
+  const known = values.filter((value): value is number => value !== null)
+  const low = Math.min(0, ...known)
+  const high = Math.max(0, ...known)
+  const span = high - low || 1
+  const y = (value: number) => BOTTOM - ((value - low) / span) * (BOTTOM - TOP)
+  return { y, zero: y(0), negative: low < 0 }
+}
+
+const path = (values: Array<number | null>, y: (value: number) => number): string => values
+  .map((value, index) => value === null ? null : `${index === 0 || values[index - 1] === null ? 'M' : 'L'} ${16 + index * (288 / Math.max(values.length - 1, 1))} ${y(value)}`)
   .filter(Boolean)
   .join(' ')
 
@@ -23,21 +41,21 @@ export function PositionChart({ points, t }: { points: PositionPoint[]; t: T }) 
     { key: 'liabilities' as const, label: t('liabilities') },
     { key: 'net' as const, label: t('netPosition') },
   ]
-  const maximum = Math.max(1, ...series.flatMap(item => points.map(point => reference(point, item.key) ?? 0)))
+  const scale = scaleOf(series.flatMap(item => points.map(point => reference(point, item.key))))
   return (
     <div className={css.chartBlock}>
       <svg className={css.lineChart} viewBox="0 0 320 150" role="img" aria-label={t('positionChart')}>
-        <line className={css.chartGrid} x1="16" y1="126" x2="304" y2="126" />
-        <line className={css.chartGrid} x1="16" y1="74" x2="304" y2="74" />
-        <line className={css.chartGrid} x1="16" y1="22" x2="304" y2="22" />
+        <line className={css.chartGrid} x1="16" y1={TOP} x2="304" y2={TOP} />
+        <line className={css.chartGrid} x1="16" y1={(TOP + BOTTOM) / 2} x2="304" y2={(TOP + BOTTOM) / 2} />
+        <line className={css.chartGrid} x1="16" y1={BOTTOM} x2="304" y2={BOTTOM} />
+        {scale.negative && <line className={css.chartZero} x1="16" y1={scale.zero} x2="304" y2={scale.zero} />}
         {series.map(item => <g key={item.key}>
-          <path className={`${css.chartLine} ${css[item.key]}`} d={path(points.map(point => reference(point, item.key)), maximum)} />
+          <path className={`${css.chartLine} ${css[item.key]}`} d={path(points.map(point => reference(point, item.key)), scale.y)} />
           {points.map((point, index) => {
             const value = reference(point, item.key)
             if (value === null) return null
             const x = 16 + index * (288 / Math.max(points.length - 1, 1))
-            const y = 126 - value / maximum * 104
-            return <circle key={point.date} className={`${css.chartPoint} ${css[item.key]}`} cx={x} cy={y} r="3" tabIndex={0}><title>{`${point.date}: ${item.label} ${point[item.key].reference_value?.number ?? '—'} ${point[item.key].reference_value?.currency ?? ''}`}</title></circle>
+            return <circle key={point.date} className={`${css.chartPoint} ${css[item.key]}`} cx={x} cy={scale.y(value)} r="3"><title>{`${point.date}: ${item.label} ${point[item.key].reference_value?.number ?? '—'} ${point[item.key].reference_value?.currency ?? ''}`}</title></circle>
           })}
         </g>)}
       </svg>

@@ -5,7 +5,8 @@ service's `/agent/*` HTTP surface directly, with no MCP server to configure.
 
 - **Tools** (`finance_*`): read accounts, balances and transactions; record expenses, income and transfers; run
   account-specific actions (card statements, loans, bills, trades); open and close accounts; amend or delete an entry.
-  Every write is a proposal. No tool of the model can approve one.
+  Every write is a proposal. No tool of the model can approve one: `finance_review` offers it as a card in the
+  conversation and records the choice you make there.
 - **Session ledger**: the conversation works on one ledger, held in the session. The model switches it with
   `finance_use_ledger`; you switch it in the page or with `/finance ledger <id>`. Tools never show a ledger argument.
 - **Tool groups**: `record` (on by default) and `analysis` (off until you turn it on) can be switched per session, in
@@ -13,8 +14,12 @@ service's `/agent/*` HTTP surface directly, with no MCP server to configure.
 - **Guard**: shell and file tools are refused when their arguments name ledger files, the sidecar, the DSH credential
   file or the service's environment. Add more paths in the `guardPaths` setting, such as the data folder.
 - **Skill** (`finance`): how the books are modelled, for models that do not know Beancount.
-- **Page** (right dock): overview of the active ledger, and approving or rejecting what the model proposed. These
-  calls are made by the host as you, with the stored token, and never appear in the conversation.
+- **Page** (right dock): overview of the active ledger, and approving or rejecting everything still pending, including
+  what other sessions proposed. These calls are made by the host as you, with the stored token, and never appear in the
+  conversation.
+- **Approval card**: `finance_review` puts one pending proposal in the conversation as a card, with its exact postings,
+  and records your answer. It uses DSH's own question card, so it needs no permission of its own and adds no UI to the
+  plugin; the model waits for your choice and cannot answer for you.
 - **Languages**: the page and the settings tab are translated into every language the harness ships (English, Chinese,
   Japanese, Spanish, French, German, Russian and Portuguese); `locale/*.json` gives each language the plugin's listing text.
 

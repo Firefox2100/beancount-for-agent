@@ -51,6 +51,7 @@
 .net { stroke: var(--dsw-alias-brand-primary); stroke-width: 2.5; }
 .chartPoint { fill: var(--dsw-alias-bg-base); stroke-width: 2; vector-effect: non-scaling-stroke; }
 .chartPoint:focus { outline: none; stroke-width: 4; }
+.chartZero { stroke: var(--dsw-alias-border-l3); stroke-width: 1; stroke-dasharray: 3 3; vector-effect: non-scaling-stroke; }
 .legend { display: flex; flex-wrap: wrap; gap: 6px 12px; color: var(--dsw-alias-label-secondary); font-size: 11px; }
 .legend span { display: inline-flex; align-items: center; gap: 5px; }
 .legendLine { width: 14px; height: 0; border-top: 2px solid; }
@@ -58,7 +59,9 @@
 .legendLine.liabilities { border-color: var(--dsw-alias-state-error-primary); border-style: dashed; }
 .legendLine.net { border-color: var(--dsw-alias-brand-primary); }
 .axisLabels { display: flex; justify-content: space-between; margin-top: 2px; color: var(--dsw-alias-label-tertiary); font-size: 10px; }
-.rateNote { margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }
+.rateNote { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 4px 8px; margin: 0; color: var(--dsw-alias-label-tertiary); font-size: 11px; line-height: 16px; }
+.linkButton { border: 0; padding: 0; background: none; color: var(--dsw-alias-brand-primary); font: inherit; cursor: pointer; }
+.linkButton:disabled { color: var(--dsw-alias-label-tertiary); cursor: default; }
 .allocationLayout { display: grid; grid-template-columns: minmax(84px, 0.7fr) minmax(0, 1.3fr); align-items: center; gap: 12px; }
 .donut { display: block; width: 100%; max-width: 132px; margin-inline: auto; transform: rotate(-90deg); }
 .donutTrack, .donutSegment { fill: none; stroke-width: 16; }

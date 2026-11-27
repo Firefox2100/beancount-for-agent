@@ -1,4 +1,5 @@
 import asyncio
+import calendar
 import datetime as dt
 from collections import defaultdict
 from decimal import Decimal
@@ -35,11 +36,11 @@ class ViewService:
     ) -> FinancialPosition:
         return await asyncio.to_thread(self._financial_position, ledger_id, interval, points, today or dt.date.today())
 
-    def reference_rate_status(self) -> ReferenceRateStatus:
-        return self._rates.status()
+    async def reference_rate_status(self) -> ReferenceRateStatus:
+        return await asyncio.to_thread(self._rates.status)
 
-    def refresh_reference_rates(self) -> ReferenceRateStatus:
-        return self._rates.refresh()
+    async def refresh_reference_rates(self) -> ReferenceRateStatus:
+        return await asyncio.to_thread(self._rates.refresh)
 
     def _open_items(self, ledger_id: str, account: str | None) -> list[OpenItems]:
         ledger = self._store.open(ledger_id)
@@ -70,19 +71,22 @@ class ViewService:
             raise RecipeError("the ledger needs an operating currency for reference valuations")
         base = currencies[0]
         dates = _point_dates(today, interval, count)
-        position_points: list[PositionPoint] = []
-        last_rates = None
+        holdings: list[tuple[dt.date, dict[str, Decimal], dict[str, Decimal]]] = []
+        quotes: set[str] = set()
         for date in dates:
-            balances = ledger.balances(date)
-            assets, liabilities = _position_totals(balances)
-            quotes = set(assets) | set(liabilities)
-            last_rates = self._rates.rates(base, quotes, date)
+            held_assets, held_liabilities = _position_totals(ledger.balances(date))
+            holdings.append((date, held_assets, held_liabilities))
+            quotes |= held_assets.keys() | held_liabilities.keys()
+        rate_rows = self._rates.rates_for(base, quotes, dates)
+        position_points: list[PositionPoint] = []
+        for date, held_assets, held_liabilities in holdings:
+            priced = rate_rows[date]
             position_points.append(PositionPoint(
                 date=date,
-                assets=_position_total(assets, base, last_rates.rates),
-                liabilities=_position_total(liabilities, base, last_rates.rates),
-                net=_position_total(_subtract(assets, liabilities), base, last_rates.rates),
-                valuation=last_rates.status,
+                assets=_position_total(held_assets, base, priced.rates),
+                liabilities=_position_total(held_liabilities, base, priced.rates),
+                net=_position_total(_subtract(held_assets, held_liabilities), base, priced.rates),
+                valuation=priced.status,
             ))
 
         current = ledger.balances(today)
@@ -94,9 +98,8 @@ class ViewService:
             group = ":".join(parts[:2])
             for currency, number in row.balances.items():
                 groups[group][currency] += Decimal(number)
-        quotes = {currency for amounts in groups.values() for currency in amounts}
-        allocation_rates = self._rates.rates(base, quotes, today)
-        valued = {name: _converted(amounts, base, allocation_rates.rates) for name, amounts in groups.items()}
+        today_rates = rate_rows.get(today) or self._rates.rates(base, quotes, today)
+        valued = {name: _converted(amounts, base, today_rates.rates) for name, amounts in groups.items()}
         denominator = sum((value for value in valued.values() if value is not None and value > 0), Decimal(0))
         allocation = [
             AllocationItem(
@@ -107,7 +110,7 @@ class ViewService:
             )
             for name, amounts in sorted(groups.items())
         ]
-        status = allocation_rates.status if quotes else (last_rates.status if last_rates is not None else self._rates.status())
+        status = today_rates.status if quotes else self._rates.status()
         return FinancialPosition(
             ledger=ledger_id, ledger_version=ledger.version(), interval=interval, base_currency=base,
             points=position_points, allocation=allocation, valuation=status,
@@ -125,7 +128,6 @@ def _point_dates(today: dt.date, interval: str, count: int) -> list[dt.date]:
         if offset == 0:
             dates.append(today)
         else:
-            import calendar
             dates.append(dt.date(point_year, point_month + 1, calendar.monthrange(point_year, point_month + 1)[1]))
     return dates
 

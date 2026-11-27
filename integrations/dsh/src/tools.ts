@@ -1,11 +1,14 @@
 /**
  * The model's tools: native, calling the service's `/agent/*` surface. None of them takes a ledger, because the
- * session holds it, and none approves anything: the person does that in the dock page.
+ * session holds it. None of them approves anything either: `finance_review` hands the person a card and acts on the
+ * answer they give, and the dock page offers the same decision for everything else pending.
  */
 import type { Agent } from '@deepseek-ai/dsh-agent'
 import { defineTool, type ParameterSchemaSpec, type ToolDefinition } from '@deepseek-ai/dsh-tools'
+import type { AskUserQuestionAnswer, AskUserQuestionRequest } from '@deepseek-ai/dsh-user-questions'
 import { FinanceError, type Finance } from './finance.ts'
 import * as format from './format.ts'
+import { decisionOf, reviewId, reviewRequest, type ApprovalLabels } from './review.ts'
 import type { BeancountView, Group, StateRecord } from './types.ts'
 
 export interface ToolDeps {
@@ -240,4 +243,74 @@ export function financeTools(deps: ToolDeps): GroupedTool[] {
     textTool('analysis', 'finance_credit_pools', 'Shared credit limits with what is used and what is left.', {}, async ({ session, ledger, signal }) =>
       format.pools(await read(session, '/agent/credit-pools', { ledger }, signal))),
   ]
+}
+
+export interface ReviewDeps {
+  finance: Finance
+  stateOf(agent: Agent): BeancountView
+  ask(request: AskUserQuestionRequest): Promise<AskUserQuestionAnswer>
+}
+
+/** A card label: the model's own words in the conversation's language, or English. */
+const label = (value: unknown, fallback: string): string =>
+  typeof value === 'string' && value.trim() !== '' ? value.trim() : fallback
+
+/**
+ * The one tool that ends a proposal's wait without the dock page: it shows the person a card with the exact postings
+ * and acts on their answer. It is registered only when this profile has the user-question service, and it blocks
+ * until the person chooses or dismisses, so the model learns nothing before that.
+ */
+export function reviewTool(deps: ReviewDeps): ToolDefinition {
+  const { finance } = deps
+  return defineTool({
+    name: 'finance_review',
+    description: 'Offer one of your pending proposals to the user as a card in the conversation, and act on their answer. The card shows the exact postings, and only the user can answer it: you cannot approve your own proposal. Use it right after proposing a change while the user is there, instead of telling them to open the page.',
+    parameters: {
+      change: string('The proposal id from the proposal you just made. Defaults to your latest pending proposal.'),
+      question: string('The question line, in the language the user writes in. Defaults to "Approve this change?".'),
+      approve: string('The label for approving, in the user\'s language. Defaults to "Approve".'),
+      reject: string('The label for refusing, in the user\'s language. Defaults to "Reject".'),
+    },
+    timeoutMs: 600_000,
+    output: { schema: { type: 'string' }, render: (_args, value) => [{ type: 'text', text: value }] },
+    async execute(args, exec) {
+      const agent = exec.agent
+      if (agent === undefined) throw new Error('finance tools work inside a conversation')
+      const session = String(agent.session.id)
+      const values = args as Record<string, unknown>
+      try {
+        const ledger = deps.stateOf(agent).ledger ?? undefined
+        const pending = await finance.agent<format.Change[]>(session, 'GET', '/agent/proposals', {
+          query: { ledger, status: 'pending' },
+          signal: exec.signal,
+        })
+        const wanted = typeof values.change === 'string' && values.change !== '' ? values.change : undefined
+        const chosen = wanted === undefined ? pending.at(-1) : pending.find(item => item.id === wanted)
+        if (chosen === undefined) {
+          throw new FinanceError(wanted === undefined
+            ? 'There is no pending proposal to review. Propose the change first, then offer the card.'
+            : `There is no pending proposal "${wanted}". finance_proposals lists the pending ones.`)
+        }
+        const labels: ApprovalLabels = { approve: label(values.approve, 'Approve'), reject: label(values.reject, 'Reject') }
+        const asked = typeof values.question === 'string' ? values.question : undefined
+        const answer = await deps.ask({ questions: [reviewRequest(chosen, labels, asked)], agent, signal: exec.signal })
+        const id = reviewId(chosen)
+        const decision = decisionOf(answer, id, labels)
+        if (decision === 'dismiss') {
+          const said = answer.answers.find(item => item.id === id)?.custom
+          return said === undefined || said.trim() === ''
+            ? 'The card was dismissed without an answer, so nothing changed. Ask the user what they want to do with the proposal.'
+            : `The user answered "${said.trim()}" instead of choosing, so nothing changed. Ask them whether to approve or reject it.`
+        }
+        const verb = decision === 'approve' ? 'approve' : 'reject'
+        const path = `/ledgers/${encodeURIComponent(String(chosen.ledger_id))}/changes/${encodeURIComponent(chosen.id)}/${verb}`
+        const result = await finance.user<{ status: string }>('POST', path, { body: { note: null }, signal: exec.signal })
+        return decision === 'approve'
+          ? `Approved: ${result.status}. The ledger records it now.`
+          : `Rejected: ${result.status}. Nothing was recorded.`
+      } catch (error) {
+        return explain(error)
+      }
+    },
+  })
 }

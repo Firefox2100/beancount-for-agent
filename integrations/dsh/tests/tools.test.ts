@@ -38,11 +38,13 @@ async function setup(routes: Parameters<typeof stubService>[0], ledger: string |
 }
 
 describe('the finance tools', () => {
-  it('take no ledger except the one that chooses it, and have no way to approve', async () => {
+  it('take no ledger except the one that chooses it, and none of them approves', async () => {
     const { tools } = await setup({})
     const names = tools.map(tool => tool.definition.name)
     expect(names.length).toBeGreaterThan(15)
     expect(names.every(name => name.startsWith('finance_'))).toBe(true)
+    // The card that ends a wait is `finance_review`, registered separately (index.ts) because it needs the
+    // user-question service; it is not part of this list and cannot approve on its own either.
     expect(names.filter(name => /approve|reject|resolve/.test(name))).toEqual([])
     for (const { definition } of tools.filter(tool => tool.definition.name !== 'finance_use_ledger')) {
       expect(JSON.stringify(definition.parameters)).not.toMatch(/"ledger"/)
