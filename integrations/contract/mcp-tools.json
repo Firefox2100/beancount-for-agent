@@ -341,6 +341,45 @@
     ]
   },
   {
+    "description": "Assets, liabilities and net position with original-currency amounts and approximate base-currency reference values. `interval` is week or month; `points` is at most 12.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "interval": {
+          "default": "month",
+          "enum": [
+            "week",
+            "month"
+          ],
+          "type": "string"
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "points": {
+          "default": 12,
+          "maximum": 12,
+          "minimum": 1,
+          "type": "integer"
+        }
+      },
+      "type": "object"
+    },
+    "name": "get_financial_position",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
     "description": "Unsettled reimbursement claims, loans, invoices and bills, grouped by link.",
     "inputSchema": {
       "additionalProperties": false,

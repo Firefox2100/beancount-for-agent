@@ -15,6 +15,53 @@ export interface OverviewData {
   active: string | null
   accounts: AccountRow[]
   balances: { account: string; balances: Record<string, string> }[]
+  position: FinancialPosition | null
+  due: DueItem[]
+}
+
+export type Interval = 'week' | 'month'
+export interface ReferenceRateStatus {
+  provider: string
+  enabled: boolean
+  base_currency?: string | null
+  observed_on?: string | null
+  fetched_at?: string | null
+  state: 'disabled' | 'empty' | 'fresh' | 'stale' | 'refreshing' | 'unavailable'
+  covered_currencies: string[]
+  missing_currencies: string[]
+  message?: string | null
+}
+export interface ReferenceValue { number: string; currency: string; approximate: boolean }
+export interface PositionTotal { original: Record<string, string>; reference_value?: ReferenceValue | null }
+export interface PositionPoint {
+  date: string
+  assets: PositionTotal
+  liabilities: PositionTotal
+  net: PositionTotal
+  valuation: ReferenceRateStatus
+}
+export interface AllocationItem {
+  account: string
+  original: Record<string, string>
+  reference_value?: ReferenceValue | null
+  share?: string | null
+}
+export interface FinancialPosition {
+  ledger: string
+  ledger_version: string
+  interval: Interval
+  base_currency: string
+  points: PositionPoint[]
+  allocation: AllocationItem[]
+  valuation: ReferenceRateStatus
+}
+export interface DueItem {
+  account: string
+  description?: string | null
+  owed: Record<string, string>
+  unbilled: Record<string, string>
+  due_date?: string | null
+  days_until_due?: number | null
 }
 
 export interface PendingItem {
@@ -29,6 +76,7 @@ export interface ConnectionStatus {
   status?: number | null
   ledgers?: string[]
   credential: { configured: boolean; writable: boolean; source?: string }
+  reference?: ReferenceRateStatus
 }
 
 const PREFIX = '/api/beancount'

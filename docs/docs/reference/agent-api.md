@@ -6,9 +6,9 @@ title: Agent API
 
 The agent API serves the [MCP tools](mcp-tools.md)' operations over HTTP, for harness plugins that register native tools instead of using MCP. It is a thin adapter over the same service the MCP tools use, so account matching, recipe choice, lenient input and bank-detail masking are identical.
 
-- Callers are always agents, whatever `X-Actor` says. The client and session come from `X-Client-Id` and `X-Session-Id`.
-- Every write creates a proposal. Approval uses the [REST API](rest-api.md) as a user.
-- The `ledger` field is optional on every request. A plugin can keep the active ledger in its session and omit it from the model's tool schemas. With exactly one ledger, it can always be omitted.
+- **Callers are always agents**, whatever `X-Actor` says. The client and session come from `X-Client-Id` and `X-Session-Id`.
+- **Everything that writes is a proposal.** Nothing here approves one: approval uses the [REST API](rest-api.md) as a user.
+- **`ledger` is an optional field** on every request, so a plugin can keep the active ledger in its own session and leave it out of the tool schemas the model sees. With exactly one ledger it can always be left out.
 - Send `Authorization: Bearer <token>` when the service has a token.
 
 ## Agent
@@ -24,6 +24,7 @@ The agent API serves the [MCP tools](mcp-tools.md)' operations over HTTP, for ha
 | `GET` | `/agent/credit-pools` | Credit Pools |
 | `GET` | `/agent/due` | Due |
 | `POST` | `/agent/expenses` | Record Expense |
+| `GET` | `/agent/financial-position` | Financial Position |
 | `POST` | `/agent/income` | Record Income |
 | `GET` | `/agent/ledgers` | List Ledgers |
 | `POST` | `/agent/ledgers` | Create Ledger |
@@ -32,6 +33,7 @@ The agent API serves the [MCP tools](mcp-tools.md)' operations over HTTP, for ha
 | `POST` | `/agent/proposals/{change_id}/withdraw` | Withdraw |
 | `GET` | `/agent/recipes` | Recipes |
 | `POST` | `/agent/reconciliations` | Reconcile |
+| `GET` | `/agent/reference-rates/status` | Reference Rate Status |
 | `GET` | `/agent/transactions` | Transactions |
 | `POST` | `/agent/transactions/{transaction_id}/amend` | Propose correcting a recorded transaction's date, payee, narration or tags. |
 | `POST` | `/agent/transactions/{transaction_id}/deletion` | Propose removing a recorded transaction. |

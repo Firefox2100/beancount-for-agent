@@ -8,6 +8,7 @@ import { FinanceError, type Finance } from './finance.ts'
 import type { AccountInfo, Balance, Change, LedgerInfo } from './format.ts'
 import { isGroup } from './state.ts'
 import type { BeancountView, StateRecord } from './types.ts'
+import type { DueItem, FinancialPosition } from './client/api.ts'
 
 export interface SessionHandle {
   state(): BeancountView
@@ -82,21 +83,26 @@ export function createRoutes(deps: RouteDeps): Route[] {
 
   return [
     route('/overview', ['GET'], async (request) => {
-      const handle = sessionOf(new URL(request.url).searchParams.get('session'))
+      const url = new URL(request.url)
+      const handle = sessionOf(url.searchParams.get('session'))
+      const interval = url.searchParams.get('interval') ?? 'month'
+      if (interval !== 'week' && interval !== 'month') throw new BadRequest('interval must be week or month')
       const state = handle.state()
       let ledgers: LedgerInfo[]
       try {
         ledgers = await finance.user<LedgerInfo[]>('GET', '/agent/ledgers')
       } catch (error) {
-        return json({ state, service: error instanceof Error ? error.message : String(error), ledgers: [], accounts: [], balances: [] })
+        return json({ state, service: error instanceof Error ? error.message : String(error), ledgers: [], accounts: [], balances: [], position: null, due: [] })
       }
       const active = state.ledger ?? (ledgers.length === 1 ? ledgers[0]?.id ?? null : null)
-      if (active === null) return json({ state, service: 'ok', ledgers, active, accounts: [], balances: [] })
-      const [accounts, balances] = await Promise.all([
+      if (active === null) return json({ state, service: 'ok', ledgers, active, accounts: [], balances: [], position: null, due: [] })
+      const [accounts, balances, position, due] = await Promise.all([
         finance.user<AccountInfo[]>('GET', `/ledgers/${id(active)}/accounts`),
         finance.user<Balance[]>('GET', `/ledgers/${id(active)}/balances`),
+        finance.user<FinancialPosition>('GET', `/ledgers/${id(active)}/financial-position`, { query: { interval, points: 12 } }),
+        finance.user<DueItem[]>('GET', `/ledgers/${id(active)}/due`, { query: { within_days: 30 } }),
       ])
-      return json({ state, service: 'ok', ledgers, active, accounts: accounts.filter(account => !account.close_date), balances })
+      return json({ state, service: 'ok', ledgers, active, accounts: accounts.filter(account => !account.close_date), balances, position, due })
     }),
 
     route('/ledger', ['POST'], async (request) => {
@@ -141,7 +147,8 @@ export function createRoutes(deps: RouteDeps): Route[] {
       const credential = await deps.credential.status()
       try {
         const ledgers = await finance.user<LedgerInfo[]>('GET', '/agent/ledgers')
-        return json({ ok: true, ledgers: ledgers.map(item => item.id), credential })
+        const reference = await finance.user<import('./client/api.ts').ReferenceRateStatus>('GET', '/agent/reference-rates/status').catch(() => undefined)
+        return json({ ok: true, ledgers: ledgers.map(item => item.id), credential, ...(reference === undefined ? {} : { reference }) })
       } catch (error) {
         return json({ ok: false, message: error instanceof Error ? error.message : String(error), status: error instanceof FinanceError ? error.status ?? null : null, credential })
       }

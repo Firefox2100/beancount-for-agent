@@ -15,6 +15,7 @@ from beancount_mcp.services.agent import AgentService
 from beancount_mcp.services.changes import ChangeService
 from beancount_mcp.services.ledgers import LedgerService
 from beancount_mcp.services.profiles import ProfileService
+from beancount_mcp.services.reference_rates import ReferenceRateService
 from beancount_mcp.services.views import ViewService
 
 _STATUS_BY_ERROR: dict[type[errors.LedgerStoreError], int] = {
@@ -41,7 +42,14 @@ def create_app(settings: Settings | None = None, registry: RecipeRegistry | None
     registry = registry or default_registry()
     ledger_service = LedgerService(store, registry, settings.agent_approval_required)
     actions_service = ActionService(store, registry, ledger_service)
-    view_service = ViewService(store)
+    reference_rates = ReferenceRateService(
+        settings.data_dir / ".service" / "reference-rates.json",
+        settings.reference_rates_enabled,
+        settings.reference_rates_url,
+        settings.reference_rates_fresh_hours,
+        settings.reference_rates_stale_hours,
+    )
+    view_service = ViewService(store, reference_rates)
     change_service = ChangeService(store, actions_service, settings.agent_approval_required)
 
     agent = AgentService(store, ledger_service, change_service, actions_service, view_service)
@@ -57,6 +65,7 @@ def create_app(settings: Settings | None = None, registry: RecipeRegistry | None
     app.state.ledger_service = ledger_service
     app.state.action_service = actions_service
     app.state.view_service = view_service
+    app.state.reference_rates = reference_rates
     app.state.profile_service = ProfileService(store, registry)
     app.state.change_service = change_service
     app.state.agent_service = agent

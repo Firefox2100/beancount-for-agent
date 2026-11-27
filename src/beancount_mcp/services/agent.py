@@ -37,7 +37,7 @@ from beancount_mcp.models import (
     UpdateTransaction,
 )
 from beancount_mcp.models.common import Amount
-from beancount_mcp.models.views import DueItem, OpenItems, PoolStatus
+from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, PoolStatus, ReferenceRateStatus
 from beancount_mcp.recipes.helpers import Money, amount_of
 from beancount_mcp.services.actions import ActionService
 from beancount_mcp.services.changes import ChangeService
@@ -124,6 +124,12 @@ class AgentService:
 
     async def pools(self, ledger: str | None) -> list[PoolStatus]:
         return await self._views.pools(await self.resolve_ledger(ledger), None)
+
+    async def financial_position(self, ledger: str | None, interval: str, points: int) -> FinancialPosition:
+        return await self._views.financial_position(await self.resolve_ledger(ledger), interval, points)
+
+    def reference_rate_status(self) -> ReferenceRateStatus:
+        return self._views.reference_rate_status()
 
     async def submit(
         self,

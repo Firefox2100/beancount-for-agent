@@ -13,6 +13,11 @@ const pending = (id: string, created: string) => ({
   caller: { actor: 'agent', client_id: 'dsh', session_id: null },
   operation: { kind: 'close_account', account: 'Assets:Old', date: '2026-11-26' },
 })
+const position = {
+  ledger: 'personal', ledger_version: 'v', interval: 'month', base_currency: 'GBP',
+  points: [{ date: '2026-11-26', assets: { original: { GBP: '100' }, reference_value: { number: '100.00', currency: 'GBP', approximate: true } }, liabilities: { original: { GBP: '20' }, reference_value: { number: '20.00', currency: 'GBP', approximate: true } }, net: { original: { GBP: '80' }, reference_value: { number: '80.00', currency: 'GBP', approximate: true } }, valuation: { provider: 'frankfurter', enabled: true, state: 'fresh', covered_currencies: [], missing_currencies: [] } }],
+  allocation: [], valuation: { provider: 'frankfurter', enabled: true, state: 'fresh', covered_currencies: [], missing_currencies: [] },
+}
 
 async function setup(routes: Parameters<typeof stubService>[0]) {
   service = await stubService(routes)
@@ -52,12 +57,16 @@ describe('dock routes', () => {
       'GET /agent/ledgers': { body: [{ id: 'personal', version: 'v' }] },
       'GET /ledgers/personal/accounts': { body: [{ name: 'Assets:Bank', details: { account_number: '12345678' } }, { name: 'Assets:Gone', close_date: '2026-01-01', details: {} }] },
       'GET /ledgers/personal/balances': { body: [{ account: 'Assets:Bank', balances: { GBP: '1' } }] },
+      'GET /ledgers/personal/financial-position': { body: position },
+      'GET /ledgers/personal/due': { body: [] },
     })
     const result = await call('/overview?session=s1')
     expect(result.status).toBe(200)
     expect(result.body.active).toBe('personal')
     expect(result.body.accounts.map((a: { name: string }) => a.name)).toEqual(['Assets:Bank'])
     expect(result.body.accounts[0].details.account_number).toBe('12345678')
+    expect(result.body.position.points[0].net.reference_value.number).toBe('80.00')
+    expect(service?.requests.find(request => request.path.endsWith('/financial-position'))?.query).toBe('?interval=month&points=12')
     expect(service?.requests.every(request => request.headers['x-actor'] === 'user')).toBe(true)
     expect(updates).toEqual([])
   })

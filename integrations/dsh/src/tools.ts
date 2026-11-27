@@ -110,6 +110,12 @@ export function financeTools(deps: ToolDeps): GroupedTool[] {
     }, async ({ args, session, ledger, signal }) =>
       format.balances(await read(session, '/agent/balances', { ledger, account: args.account, as_of: args.as_of }, signal))),
 
+    textTool('analysis', 'finance_position', 'Summarise assets, liabilities and net position. Original currencies remain primary; any base-currency total is an approximate reference value only.', {
+      interval: { type: 'string', enum: ['week', 'month'], description: 'Weekly or monthly history. Defaults to month.' },
+      points: { type: 'integer', description: 'History points, from 1 to 12. Defaults to 12.' },
+    }, async ({ args, session, ledger, signal }) =>
+      format.financialPosition(await read(session, '/agent/financial-position', { ledger, interval: args.interval, points: args.points }, signal))),
+
     textTool('core', 'finance_transactions', 'Find recorded transactions by text (payee or narration), account, dates or tag. Each shows its id, for finance_amend and finance_delete.', {
       text: string('Words in the payee or narration.'),
       account: string('An account name or a prefix of one.'),

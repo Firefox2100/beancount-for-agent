@@ -739,6 +739,48 @@
         "title": "AddTransaction",
         "type": "object"
       },
+      "AllocationItem": {
+        "properties": {
+          "account": {
+            "title": "Account",
+            "type": "string"
+          },
+          "original": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Original",
+            "type": "object"
+          },
+          "reference_value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferenceValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "share": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Share"
+          }
+        },
+        "required": [
+          "account",
+          "original"
+        ],
+        "title": "AllocationItem",
+        "type": "object"
+      },
       "AmendChangeRequest": {
         "properties": {
           "operation": {
@@ -1592,6 +1634,54 @@
         "title": "ExpenseRequest",
         "type": "object"
       },
+      "FinancialPosition": {
+        "properties": {
+          "allocation": {
+            "items": {
+              "$ref": "#/components/schemas/AllocationItem"
+            },
+            "title": "Allocation",
+            "type": "array"
+          },
+          "base_currency": {
+            "title": "Base Currency",
+            "type": "string"
+          },
+          "interval": {
+            "title": "Interval",
+            "type": "string"
+          },
+          "ledger": {
+            "title": "Ledger",
+            "type": "string"
+          },
+          "ledger_version": {
+            "title": "Ledger Version",
+            "type": "string"
+          },
+          "points": {
+            "items": {
+              "$ref": "#/components/schemas/PositionPoint"
+            },
+            "title": "Points",
+            "type": "array"
+          },
+          "valuation": {
+            "$ref": "#/components/schemas/ReferenceRateStatus"
+          }
+        },
+        "required": [
+          "ledger",
+          "ledger_version",
+          "interval",
+          "base_currency",
+          "points",
+          "allocation",
+          "valuation"
+        ],
+        "title": "FinancialPosition",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -2281,6 +2371,59 @@
         "title": "PoolStatus",
         "type": "object"
       },
+      "PositionPoint": {
+        "properties": {
+          "assets": {
+            "$ref": "#/components/schemas/PositionTotal"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "liabilities": {
+            "$ref": "#/components/schemas/PositionTotal"
+          },
+          "net": {
+            "$ref": "#/components/schemas/PositionTotal"
+          },
+          "valuation": {
+            "$ref": "#/components/schemas/ReferenceRateStatus"
+          }
+        },
+        "required": [
+          "date",
+          "assets",
+          "liabilities",
+          "net",
+          "valuation"
+        ],
+        "title": "PositionPoint",
+        "type": "object"
+      },
+      "PositionTotal": {
+        "properties": {
+          "original": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "title": "Original",
+            "type": "object"
+          },
+          "reference_value": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/ReferenceValue"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "title": "PositionTotal",
+        "type": "object"
+      },
       "Posting-Input": {
         "properties": {
           "account": {
@@ -2721,6 +2864,113 @@
           "items"
         ],
         "title": "RecordPage",
+        "type": "object"
+      },
+      "ReferenceRateStatus": {
+        "properties": {
+          "base_currency": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Base Currency"
+          },
+          "covered_currencies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Covered Currencies",
+            "type": "array"
+          },
+          "enabled": {
+            "title": "Enabled",
+            "type": "boolean"
+          },
+          "fetched_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Fetched At"
+          },
+          "message": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Message"
+          },
+          "missing_currencies": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Missing Currencies",
+            "type": "array"
+          },
+          "observed_on": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Observed On"
+          },
+          "provider": {
+            "default": "frankfurter",
+            "title": "Provider",
+            "type": "string"
+          },
+          "state": {
+            "description": "disabled, empty, fresh, stale, refreshing, or unavailable",
+            "title": "State",
+            "type": "string"
+          }
+        },
+        "required": [
+          "enabled",
+          "state"
+        ],
+        "title": "ReferenceRateStatus",
+        "type": "object"
+      },
+      "ReferenceValue": {
+        "properties": {
+          "approximate": {
+            "default": true,
+            "title": "Approximate",
+            "type": "boolean"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "number": {
+            "title": "Number",
+            "type": "string"
+          }
+        },
+        "required": [
+          "number",
+          "currency"
+        ],
+        "title": "ReferenceValue",
         "type": "object"
       },
       "ResolveChangeRequest": {
@@ -4461,6 +4711,80 @@
         ]
       }
     },
+    "/agent/financial-position": {
+      "get": {
+        "operationId": "financial_position_agent_financial_position_get",
+        "parameters": [
+          {
+            "description": "Ledger id. May be left out when there is exactly one.",
+            "in": "query",
+            "name": "ledger",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Ledger id. May be left out when there is exactly one.",
+              "title": "Ledger"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "default": "month",
+              "pattern": "^(week|month)$",
+              "title": "Interval",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "points",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "maximum": 12,
+              "minimum": 1,
+              "title": "Points",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialPosition"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Financial Position",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/income": {
       "post": {
         "operationId": "record_income_agent_income_post",
@@ -4962,6 +5286,27 @@
           }
         },
         "summary": "Reconcile",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/reference-rates/status": {
+      "get": {
+        "operationId": "reference_rate_status_agent_reference_rates_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceRateStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Reference Rate Status",
         "tags": [
           "agent"
         ]
@@ -7349,6 +7694,89 @@
         ]
       }
     },
+    "/ledgers/{ledger_id}/financial-position": {
+      "get": {
+        "description": "Assets, liabilities and net position, with explicitly approximate reference valuations.",
+        "operationId": "financial_position_ledgers__ledger_id__financial_position_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "interval",
+            "required": false,
+            "schema": {
+              "default": "month",
+              "pattern": "^(week|month)$",
+              "title": "Interval",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "points",
+            "required": false,
+            "schema": {
+              "default": 12,
+              "maximum": 12,
+              "minimum": 1,
+              "title": "Points",
+              "type": "integer"
+            }
+          },
+          {
+            "in": "query",
+            "name": "today",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "format": "date",
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Today"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/FinancialPosition"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Financial Position",
+        "tags": [
+          "views"
+        ]
+      }
+    },
     "/ledgers/{ledger_id}/kinds": {
       "get": {
         "description": "Account types to choose from when opening an account, with the recipes each one gets.",
@@ -7740,6 +8168,106 @@
         "summary": "List Recipes",
         "tags": [
           "actions"
+        ]
+      }
+    },
+    "/ledgers/{ledger_id}/reference-rates/refresh": {
+      "post": {
+        "operationId": "refresh_reference_rates_ledgers__ledger_id__reference_rates_refresh_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Actor",
+            "required": false,
+            "schema": {
+              "default": "user",
+              "enum": [
+                "user",
+                "agent"
+              ],
+              "title": "X-Actor",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Client-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Session-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Id"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceRateStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Refresh Reference Rates",
+        "tags": [
+          "views"
+        ]
+      }
+    },
+    "/ledgers/{ledger_id}/reference-rates/status": {
+      "get": {
+        "operationId": "reference_rate_status_ledgers__ledger_id__reference_rates_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReferenceRateStatus"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "summary": "Reference Rate Status",
+        "tags": [
+          "views"
         ]
       }
     },

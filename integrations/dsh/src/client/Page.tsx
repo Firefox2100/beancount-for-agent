@@ -4,7 +4,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { Group } from '../types.ts'
-import { getJson, postJson, type OverviewData, type PendingItem } from './api.ts'
+import { getJson, postJson, type Interval, type OverviewData, type PendingItem } from './api.ts'
 import { Approval } from './Approval.tsx'
 import type { BeancountKey } from './locales.ts'
 import { Overview } from './Overview.tsx'
@@ -31,6 +31,8 @@ export function Page({ useProjection, sessionId, drafts, t }: Props) {
   const session = String(sessionId)
   const tabKey = `${session}:tab`
   const [tab, setTabState] = useState<Tab>(drafts.get(tabKey) === 'approval' ? 'approval' : 'overview')
+  const intervalKey = `${session}:interval`
+  const [interval, setIntervalState] = useState<Interval>(drafts.get(intervalKey) === 'week' ? 'week' : 'month')
   const [overview, setOverview] = useState<OverviewData | null>(null)
   const [pending, setPending] = useState<PendingItem[] | null>(null)
   const [overviewError, setOverviewError] = useState<string | null>(null)
@@ -48,7 +50,7 @@ export function Page({ useProjection, sessionId, drafts, t }: Props) {
     const controller = new AbortController()
     void (async () => {
       const [overviewResult, pendingResult] = await Promise.allSettled([
-        getJson<OverviewData>(`/overview?session=${encodeURIComponent(session)}`, controller.signal),
+        getJson<OverviewData>(`/overview?session=${encodeURIComponent(session)}&interval=${interval}`, controller.signal),
         getJson<PendingItem[]>('/pending', controller.signal),
       ])
       if (controller.signal.aborted) return
@@ -56,7 +58,7 @@ export function Page({ useProjection, sessionId, drafts, t }: Props) {
       if (pendingResult.status === 'fulfilled') { setPending(pendingResult.value); setPendingError(null) } else setPendingError(message(pendingResult.reason))
     })()
     return () => { controller.abort() }
-  }, [session, turns, nonce])
+  }, [session, turns, nonce, interval])
 
   const change = async (run: () => Promise<unknown>) => {
     setBusy(true)
@@ -84,6 +86,8 @@ export function Page({ useProjection, sessionId, drafts, t }: Props) {
           error={overviewError}
           busy={busy}
           onRefresh={refresh}
+          interval={interval}
+          onInterval={(next) => { drafts.set(intervalKey, next); setIntervalState(next) }}
           onLedger={(next) => { void change(() => postJson('/ledger', { session, ledger: next })) }}
           onGroup={(group: Group, enabled) => { void change(() => postJson('/groups', { session, group, enabled })) }}
         />

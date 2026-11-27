@@ -19,6 +19,17 @@ export interface OpenItems { account: string; items: { link: string; opened: str
 export interface DueItem { account: string; due_date?: string | null; owed: Record<string, string>; unbilled?: Record<string, string>; autopay_from?: string | null; next_statement?: string | null }
 export interface PoolStatus { name: string; limit: Amount; used: string; available: string; unconverted?: Record<string, string> }
 export interface LedgerInfo { id: string; version: string }
+export interface FinancialPosition {
+  base_currency: string
+  interval: 'week' | 'month'
+  points: Array<{
+    date: string
+    assets: { original: Record<string, string>; reference_value?: Amount | null }
+    liabilities: { original: Record<string, string>; reference_value?: Amount | null }
+    net: { original: Record<string, string>; reference_value?: Amount | null }
+  }>
+  valuation: { state: string; observed_on?: string | null; missing_currencies?: string[] }
+}
 export type Change = Parameters<typeof describeChange>[0]
 
 const money = (amounts: Record<string, string>): string =>
@@ -45,6 +56,30 @@ export function accounts(items: AccountInfo[]): string {
 export function balances(items: Balance[]): string {
   if (items.length === 0) return 'Nothing is recorded yet.'
   return items.map(item => `${item.account}  ${money(item.balances)}`).join('\n')
+}
+
+export function financialPosition(item: FinancialPosition): string {
+  const latest = item.points.at(-1)
+  if (latest === undefined) return 'No financial position is available yet.'
+  const value = (total: FinancialPosition['points'][number]['assets']): string => {
+    const original = money(total.original)
+    const reference = total.reference_value
+    return reference === null || reference === undefined
+      ? original
+      : `${original} (approximately ${reference.number} ${reference.currency})`
+  }
+  const missing = item.valuation.missing_currencies ?? []
+  const rate = item.valuation.state === 'disabled'
+    ? 'Reference conversion is disabled.'
+    : `Reference rates: ${item.valuation.state}${item.valuation.observed_on == null ? '' : `, observed ${item.valuation.observed_on}`}${missing.length === 0 ? '' : `; missing ${missing.join(', ')}`}.`
+  return [
+    `Financial position on ${latest.date}:`,
+    `Assets: ${value(latest.assets)}`,
+    `Liabilities: ${value(latest.liabilities)}`,
+    `Net position: ${value(latest.net)}`,
+    rate,
+    'Reference values are approximate and are not ledger entries.',
+  ].join('\n')
 }
 
 export function transactions(items: Transaction[]): string {

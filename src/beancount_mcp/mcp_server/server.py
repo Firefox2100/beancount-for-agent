@@ -9,10 +9,11 @@ import datetime as dt
 from collections.abc import Awaitable, Callable
 from decimal import Decimal
 from functools import wraps
-from typing import Any
+from typing import Annotated, Any, Literal
 
 from fastmcp import Context, FastMCP
 from fastmcp.exceptions import ToolError
+from pydantic import Field
 
 from beancount_mcp.ledger.errors import ChangeRejected, LedgerStoreError
 from beancount_mcp.models import (
@@ -29,7 +30,7 @@ from beancount_mcp.models import (
     Transaction,
     TransactionInput,
 )
-from beancount_mcp.models.views import DueItem, OpenItems, PoolStatus
+from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, PoolStatus
 from beancount_mcp.recipes.helpers import Money
 from beancount_mcp.services.agent import AgentService
 
@@ -117,6 +118,15 @@ def create_mcp(agent: AgentService, raw_transactions: bool = False) -> FastMCP:
     async def get_balances(ledger: Ledger = None, account: str | None = None, as_of: dt.date | None = None) -> list[AccountBalance]:
         """Balances per account and currency. `account` keeps that account and its sub-accounts."""
         return await agent.balances(ledger, account, as_of)
+
+    @tool("read", read_only=True)
+    async def get_financial_position(
+        ledger: Ledger = None,
+        interval: Literal["week", "month"] = "month",
+        points: Annotated[int, Field(ge=1, le=12)] = 12,
+    ) -> FinancialPosition:
+        """Assets, liabilities and net position with original-currency amounts and approximate base-currency reference values. `interval` is week or month; `points` is at most 12."""
+        return await agent.financial_position(ledger, interval, points)
 
     @tool("read", read_only=True)
     async def search_transactions(

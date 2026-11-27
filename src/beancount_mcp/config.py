@@ -22,6 +22,10 @@ class Settings(BaseSettings):
     mcp_raw_transactions: bool = False
     agent_approval_required: bool = True
     auth_token: SecretStr | None = None
+    reference_rates_enabled: bool = False
+    reference_rates_url: str = "https://api.frankfurter.dev/v2"
+    reference_rates_fresh_hours: int = 24
+    reference_rates_stale_hours: int = 12
 
     @field_validator("auth_token", mode="after")
     @classmethod

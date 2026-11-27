@@ -59,6 +59,9 @@ def test_reads_filter_by_account_and_prefix(api):
     assert any(k["name"] == "checking" for k in api.get("/agent/account-types").json())
     recipes = api.get("/agent/recipes", params={"account": "Current"}).json()
     assert {"spend", "transfer"} <= {r["id"] for r in recipes}
+    position = api.get("/agent/financial-position", params={"points": 1}).json()
+    assert position["base_currency"] == "GBP" and len(position["points"]) == 1
+    assert api.get("/agent/reference-rates/status").json()["state"] == "disabled"
 
 
 def test_proposals_are_private_to_the_client_and_can_be_withdrawn(api):

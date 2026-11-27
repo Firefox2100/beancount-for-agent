@@ -36,6 +36,16 @@ Accounts with money due soon: amount owed, due date and autopay source.
 | `ledger` | string |  |
 | `within_days` | integer |  |
 
+### `get_financial_position`
+
+Assets, liabilities and net position with original-currency amounts and approximate base-currency reference values. `interval` is week or month; `points` is at most 12.
+
+| Argument | Type | Required |
+| --- | --- | --- |
+| `interval` | string |  |
+| `ledger` | string |  |
+| `points` | integer |  |
+
 ### `get_open_items`
 
 Unsettled reimbursement claims, loans, invoices and bills, grouped by link.

@@ -27,7 +27,7 @@ from beancount_mcp.models import (
     RecipeInfo,
     Transaction,
 )
-from beancount_mcp.models.views import DueItem, OpenItems, PoolStatus
+from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, PoolStatus, ReferenceRateStatus
 from beancount_mcp.recipes.helpers import Money
 
 router = APIRouter(prefix="/agent", tags=["agent"])
@@ -175,6 +175,21 @@ async def due(agent: AgentServiceDep, ledger: LedgerQuery = None, within_days: i
 @router.get("/credit-pools")
 async def credit_pools(agent: AgentServiceDep, ledger: LedgerQuery = None) -> list[PoolStatus]:
     return await agent.pools(ledger)
+
+
+@router.get("/financial-position")
+async def financial_position(
+    agent: AgentServiceDep,
+    ledger: LedgerQuery = None,
+    interval: str = Query(default="month", pattern="^(week|month)$"),
+    points: int = Query(default=12, ge=1, le=12),
+) -> FinancialPosition:
+    return await agent.financial_position(ledger, interval, points)
+
+
+@router.get("/reference-rates/status")
+async def reference_rate_status(agent: AgentServiceDep) -> ReferenceRateStatus:
+    return agent.reference_rate_status()
 
 
 @router.get("/proposals")

@@ -1,10 +1,11 @@
 import datetime as dt
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Query
 
-from beancount_mcp.api.deps import ViewServiceDep
+from beancount_mcp.api.deps import CallerDep, ViewServiceDep
+from beancount_mcp.ledger.errors import ApprovalRequired
 from beancount_mcp.models.common import AccountName
-from beancount_mcp.models.views import DueItem, OpenItems, PoolStatus
+from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, PoolStatus, ReferenceRateStatus
 
 router = APIRouter(prefix="/ledgers/{ledger_id}", tags=["views"])
 
@@ -27,3 +28,27 @@ async def due(
 async def pools(ledger_id: str, service: ViewServiceDep, today: dt.date | None = None) -> list[PoolStatus]:
     """Shared credit limits: used and available, converting with the ledger's price directives."""
     return await service.pools(ledger_id, today)
+
+
+@router.get("/financial-position")
+async def financial_position(
+    ledger_id: str,
+    service: ViewServiceDep,
+    interval: str = Query(default="month", pattern="^(week|month)$"),
+    points: int = Query(default=12, ge=1, le=12),
+    today: dt.date | None = None,
+) -> FinancialPosition:
+    """Assets, liabilities and net position, with explicitly approximate reference valuations."""
+    return await service.financial_position(ledger_id, interval, points, today)
+
+
+@router.get("/reference-rates/status")
+async def reference_rate_status(service: ViewServiceDep) -> ReferenceRateStatus:
+    return service.reference_rate_status()
+
+
+@router.post("/reference-rates/refresh")
+async def refresh_reference_rates(service: ViewServiceDep, caller: CallerDep) -> ReferenceRateStatus:
+    if caller.actor == "agent":
+        raise ApprovalRequired("reference rates are refreshed by the user")
+    return service.refresh_reference_rates()

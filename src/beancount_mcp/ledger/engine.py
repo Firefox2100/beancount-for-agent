@@ -72,6 +72,11 @@ class Ledger:
         entries, errors, _ = loader.load_file(str(self.main_file))
         return entries, [_convert_error(error, self.root) for error in errors]
 
+    def operating_currencies(self) -> list[str]:
+        """Configured reporting currencies, without exposing raw ledger options at the service boundary."""
+        _, _, options = loader.load_file(str(self.main_file))
+        return list(options.get("operating_currency", []))
+
     def status(self) -> LedgerStatus:
         _, errors = self.load()
         return LedgerStatus(**self.info().model_dump(), errors=errors)

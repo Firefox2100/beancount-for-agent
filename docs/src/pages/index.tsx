@@ -17,7 +17,7 @@ export default function Home(): ReactNode {
     <Layout
       title="Beancount for agents"
       description="Let agents help with bookkeeping through validated operations and human-approved changes.">
-      <main className={styles.home}>
+      <main className={clsx(styles.home, 'docs-home')}>
         <section className={styles.hero}>
           <div className={styles.heroCopy}>
             <div className={styles.heroIdentity}>
@@ -57,8 +57,8 @@ export default function Home(): ReactNode {
               <div className={styles.stageLabel}><RouteNode>2</RouteNode>Exact postings</div>
               <h3>What would change</h3>
               <dl className={styles.postings}>
-                <div><dt>Expenses:Health:Pharmacy</dt><dd><span style={{color: '#285d85', fontSize: '.6rem', textTransform: 'uppercase'}}>Sample&nbsp;</span>18.65 GBP</dd></div>
-                <div><dt>Liabilities:Card</dt><dd><span style={{color: '#285d85', fontSize: '.6rem', textTransform: 'uppercase'}}>Sample&nbsp;</span>−18.65 GBP</dd></div>
+                <div><dt>Expenses:Health:Pharmacy</dt><dd><span style={{color: 'var(--blue)', fontSize: '.6rem', textTransform: 'uppercase'}}>Sample&nbsp;</span>18.65 GBP</dd></div>
+                <div><dt>Liabilities:Card</dt><dd><span style={{color: 'var(--blue)', fontSize: '.6rem', textTransform: 'uppercase'}}>Sample&nbsp;</span>−18.65 GBP</dd></div>
               </dl>
               <span className={styles.validated}>Parsed, booked and balanced</span>
             </article>

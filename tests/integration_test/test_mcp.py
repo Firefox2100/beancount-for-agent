@@ -51,7 +51,7 @@ def test_tool_set_is_curated(tmp_path):
         return {tool.name for tool in await client.list_tools()}
 
     names = run(build(tmp_path), steps)
-    assert {"record_expense", "list_recipes", "perform_recipe", "get_due", "reconcile_account"} <= names
+    assert {"record_expense", "list_recipes", "perform_recipe", "get_due", "get_financial_position", "reconcile_account"} <= names
     assert not {"approve_change", "propose_transaction", "read_file", "write_file"} & names
 
 

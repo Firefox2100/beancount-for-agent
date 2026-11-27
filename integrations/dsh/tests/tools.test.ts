@@ -56,6 +56,7 @@ describe('the finance tools', () => {
     expect(group('finance_use_ledger')).toBe('core')
     expect(group('finance_expense')).toBe('record')
     expect(group('finance_due')).toBe('analysis')
+    expect(group('finance_position')).toBe('analysis')
     expect(group('finance_open_items')).toBe('analysis')
   })
 
@@ -95,6 +96,18 @@ describe('the finance tools', () => {
     expect(accounts).toMatch(/sort code ••••34/)
     expect(await run('finance_balances', { account: 'Assets' })).toBe('Assets:Bank:Current  48469.17 GBP')
     expect(service?.requests[1]?.query).toBe('?ledger=personal&account=Assets')
+  })
+
+  it('summarises the financial position without presenting reference values as entries', async () => {
+    const { run } = await setup({ 'GET /agent/financial-position': { body: {
+      base_currency: 'GBP', interval: 'month',
+      points: [{ date: '2026-11-26', assets: { original: { GBP: '100' }, reference_value: { number: '100.00', currency: 'GBP' } }, liabilities: { original: { USD: '20' }, reference_value: { number: '16.00', currency: 'GBP' } }, net: { original: { GBP: '100', USD: '-20' }, reference_value: { number: '84.00', currency: 'GBP' } } }],
+      valuation: { state: 'fresh', observed_on: '2026-11-25', missing_currencies: [] },
+    } } })
+    const text = await run('finance_position', { interval: 'month', points: 12 })
+    expect(text).toMatch(/Net position: 100 GBP, -20 USD \(approximately 84.00 GBP\)/)
+    expect(text).toMatch(/not ledger entries/)
+    expect(service?.requests[0]?.query).toBe('?ledger=personal&interval=month&points=12')
   })
 
   it('amend and delete address the transaction by id', async () => {

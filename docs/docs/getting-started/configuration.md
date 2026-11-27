@@ -15,6 +15,10 @@ Settings are read with `pydantic-settings`. Every variable starts with `BEANCOUN
 | `BEANCOUNT_MCP_MCP_ENABLED` | `false` | Serve the MCP endpoint at `/mcp`. |
 | `BEANCOUNT_MCP_MCP_RAW_TRANSACTIONS` | `false` | Also expose a tool that takes raw postings. Off by default, because recipes are safer. |
 | `BEANCOUNT_MCP_AGENT_APPROVAL_REQUIRED` | `true` | Agent changes wait for approval. With `false` they are applied at once and recorded as approved. |
+| `BEANCOUNT_MCP_REFERENCE_RATES_ENABLED` | `false` | Enable approximate, read-only reference valuations from Frankfurter. These values never drive ledger entries. |
+| `BEANCOUNT_MCP_REFERENCE_RATES_URL` | `https://api.frankfurter.dev/v2` | Frankfurter v2 root. May point to a self-hosted instance. |
+| `BEANCOUNT_MCP_REFERENCE_RATES_FRESH_HOURS` | `24` | How long a fetched rate remains fresh. |
+| `BEANCOUNT_MCP_REFERENCE_RATES_STALE_HOURS` | `12` | Additional stale-while-revalidate grace period. |
 | `BEANCOUNT_MCP_AUTH_TOKEN` | none | The bearer token for the whole service. A blank value means **no authentication**. |
 
 Booleans accept `true` and `false`. Leave `AUTH_TOKEN` unset only on a loopback you trust.

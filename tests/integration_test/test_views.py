@@ -79,3 +79,36 @@ def test_pool_converts_with_prices_and_reports_the_rest(client, card_ledger):
     pool = client.get(f"{card_ledger}/pools", params={"today": "2026-03-01"}).json()[0]
     assert (pool["used"], pool["available"], pool["unconverted"]) == ("200.80", "799.20", {})
     assert {m["account"] for m in pool["members"]} == {CARD, second}
+
+
+def test_financial_position_keeps_original_amounts_and_caps_chart_points(client):
+    client.post("/ledgers", json={"id": "position", "operating_currencies": ["USD"]})
+    for account in ("Assets:Bank", "Liabilities:Card", "Equity:Opening"):
+        assert client.post("/ledgers/position/accounts", json={"account": account, "date": "2026-01-01"}).status_code == 201
+    transaction = {
+        "date": "2026-01-02", "narration": "Opening position", "postings": [
+            {"account": "Assets:Bank", "units": {"number": "100", "currency": "USD"}},
+            {"account": "Liabilities:Card", "units": {"number": "-30", "currency": "USD"}},
+            {"account": "Equity:Opening"},
+        ],
+    }
+    assert client.post("/ledgers/position/transactions", json=transaction).status_code == 201
+
+    response = client.get("/ledgers/position/financial-position", params={"interval": "month", "points": 12, "today": "2026-03-15"})
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert len(body["points"]) == 12
+    latest = body["points"][-1]
+    assert latest["assets"]["original"] == {"USD": "100"}
+    assert latest["liabilities"]["original"] == {"USD": "30"}
+    assert latest["net"]["reference_value"] == {"number": "70.00", "currency": "USD", "approximate": True}
+    assert body["allocation"][0]["account"] == "Assets:Bank"
+    assert body["valuation"]["state"] == "disabled"
+    assert client.get("/ledgers/position/financial-position", params={"points": 13}).status_code == 422
+
+
+def test_reference_rate_refresh_is_user_only(client, ledger):
+    status = client.get(f"{ledger}/reference-rates/status").json()
+    assert status["state"] == "disabled"
+    assert client.post(f"{ledger}/reference-rates/refresh", headers={"X-Actor": "agent"}).status_code == 403
+    assert client.post(f"{ledger}/reference-rates/refresh").status_code == 200

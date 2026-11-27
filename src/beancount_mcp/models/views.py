@@ -50,3 +50,51 @@ class PoolStatus(BaseModel):
         default_factory=dict,
         description="Owed amounts in currencies with no price to the limit currency. They are not counted in `used`.",
     )
+
+
+class ReferenceRateStatus(BaseModel):
+    provider: str = "frankfurter"
+    enabled: bool
+    base_currency: str | None = None
+    observed_on: dt.date | None = None
+    fetched_at: dt.datetime | None = None
+    state: str = Field(description="disabled, empty, fresh, stale, refreshing, or unavailable")
+    covered_currencies: list[str] = Field(default_factory=list)
+    missing_currencies: list[str] = Field(default_factory=list)
+    message: str | None = None
+
+
+class ReferenceValue(BaseModel):
+    number: str
+    currency: str
+    approximate: bool = True
+
+
+class PositionTotal(BaseModel):
+    original: dict[str, str] = Field(default_factory=dict)
+    reference_value: ReferenceValue | None = None
+
+
+class PositionPoint(BaseModel):
+    date: dt.date
+    assets: PositionTotal
+    liabilities: PositionTotal
+    net: PositionTotal
+    valuation: ReferenceRateStatus
+
+
+class AllocationItem(BaseModel):
+    account: str
+    original: dict[str, str]
+    reference_value: ReferenceValue | None = None
+    share: str | None = None
+
+
+class FinancialPosition(BaseModel):
+    ledger: str
+    ledger_version: str
+    interval: str
+    base_currency: str
+    points: list[PositionPoint]
+    allocation: list[AllocationItem]
+    valuation: ReferenceRateStatus

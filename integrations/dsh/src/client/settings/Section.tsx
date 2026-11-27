@@ -32,38 +32,30 @@ export function Section(props: SectionProps) {
       <h2 className={css.title}>{t('settingsTitle')}</h2>
       <p className={css.muted}>{t('settingsDescription')}</p>
       <Frame labels={labels} state={state} onSave={() => { void props.save() }} onDiscard={() => { props.discard() }}>
-        <label className={css.field}>{t('baseUrl')}
-          <input className={css.input} value={state.baseUrl.text} disabled={!state.writable} onChange={(event) => { props.edit('baseUrl', event.target.value) }} />
-        </label>
-        <label className={css.field}>{t('tokenName')}
-          <input className={css.input} value={state.tokenRef.text} disabled={!state.writable} onChange={(event) => { props.edit('tokenRef', event.target.value) }} />
-        </label>
-        <SecretField
-          id="beancount-token-value"
-          label={t('token')}
-          hint={t('tokenHelp')}
-          stateLabel={tokenState}
-          text={state.token.text}
-          configured={credential?.configured === true}
-          disabled={locked}
-          onEdit={(text) => { props.edit('token', text) }}
-        />
-        <div className={css.inline}>
-          <Button disabled={locked || credential?.configured !== true} onClick={() => { setBusy(true); void props.removeToken().finally(() => { setBusy(false) }) }}>{t('tokenRemove')}</Button>
-          {readOnly && <span className={css.muted} role="status">{t('tokenReadOnly')}</span>}
-        </div>
-        {state.tokenError !== undefined && <p className={css.error} role="alert">{state.tokenError}</p>}
-        <label className={css.field}>{t('timeout')}
-          <input className={css.input} type="number" min={1} step={500} value={state.timeoutMs.text} disabled={!state.writable} onChange={(event) => { props.edit('timeoutMs', event.target.value) }} />
-        </label>
-        <label className={css.inline}>
-          <input type="checkbox" checked={state.guard} disabled={!state.writable} onChange={(event) => { props.setGuard(event.target.checked) }} />
-          {t('guard')}
-        </label>
-        <label className={css.field}>{t('guardPaths')}
-          <textarea className={css.area} rows={3} value={state.guardPaths.text} disabled={!state.writable} onChange={(event) => { props.edit('guardPaths', event.target.value) }} />
-        </label>
-        <p className={css.muted}>{t('guardPathsHelp')}</p>
+        <section className={css.settingsCard}>
+          <h3>{t('connection')}</h3>
+          <label className={css.field}>{t('baseUrl')}<input className={css.input} value={state.baseUrl.text} disabled={!state.writable} onChange={(event) => { props.edit('baseUrl', event.target.value) }} /></label>
+          <label className={css.field}>{t('tokenName')}<input className={css.input} value={state.tokenRef.text} disabled={!state.writable} onChange={(event) => { props.edit('tokenRef', event.target.value) }} /></label>
+          <SecretField id="beancount-token-value" label={t('token')} hint={t('tokenHelp')} stateLabel={tokenState} text={state.token.text} configured={credential?.configured === true} disabled={locked} onEdit={(text) => { props.edit('token', text) }} />
+          <div className={css.inline}><Button disabled={locked || credential?.configured !== true} onClick={() => { setBusy(true); void props.removeToken().finally(() => { setBusy(false) }) }}>{t('tokenRemove')}</Button>{readOnly && <span className={css.muted} role="status">{t('tokenReadOnly')}</span>}</div>
+          {state.tokenError !== undefined && <p className={css.error} role="alert">{state.tokenError}</p>}
+        </section>
+        <section className={css.settingsCard}>
+          <h3>{t('requestBehaviour')}</h3>
+          <label className={css.field}>{t('timeout')}<input className={css.input} type="number" min={1} step={500} value={state.timeoutMs.text} disabled={!state.writable} onChange={(event) => { props.edit('timeoutMs', event.target.value) }} /></label>
+        </section>
+        <section className={css.settingsCard}>
+          <h3>{t('ledgerProtection')}</h3>
+          <label className={css.inline}><input type="checkbox" checked={state.guard} disabled={!state.writable} onChange={(event) => { props.setGuard(event.target.checked) }} />{t('guard')}</label>
+          <label className={css.field}>{t('guardPaths')}<textarea className={css.area} rows={3} value={state.guardPaths.text} disabled={!state.writable} onChange={(event) => { props.edit('guardPaths', event.target.value) }} /></label>
+          <p className={css.muted}>{t('guardPathsHelp')}</p>
+        </section>
+        <section className={css.settingsCard}>
+          <h3>{t('referenceRates')}</h3>
+          <p className={css.muted}>{t('referenceRatesHelp')}</p>
+          <div className={css.statusRow}><span>{t('status')}</span><strong>{state.reference?.state ?? t('unavailable')}</strong></div>
+          {state.reference?.observed_on != null && <div className={css.statusRow}><span>{t('observedOn')}</span><strong>{state.reference.observed_on}</strong></div>}
+        </section>
       </Frame>
       <div className={css.inline}>
         <Button disabled={state.testing} onClick={() => { void props.test() }}>{state.testing ? t('testing') : t('test')}</Button>

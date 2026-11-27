@@ -33,6 +33,7 @@ export interface SettingsState extends FormShell {
   token: FieldState
   /** What the credential store says, never the value; absent until read. */
   credential: ConnectionStatus['credential'] | undefined
+  reference: ConnectionStatus['reference'] | undefined
   tokenError?: string
   testing: boolean
   test?: TestResult
@@ -76,6 +77,7 @@ export class SettingsController {
   private readonly leave: () => void
   private abort = new AbortController()
   private credential: SettingsState['credential']
+  private reference: SettingsState['reference']
   private tokenError: string | undefined
   private testing = false
   private tested: TestResult | undefined
@@ -113,6 +115,7 @@ export class SettingsController {
       guardPaths: this.form.field('guardPaths'),
       token: this.form.field('token'),
       credential: this.credential,
+      reference: this.reference,
       testing: this.testing,
       ...this.tokenError === undefined ? {} : { tokenError: this.tokenError },
       ...this.tested === undefined ? {} : { test: this.tested },
@@ -123,6 +126,7 @@ export class SettingsController {
     try {
       const status = await getJson<ConnectionStatus>('/status', this.abort.signal)
       this.credential = status.credential
+      this.reference = status.reference
     } catch { /* the next read tries again */ }
     this.store.set(this.projection())
   }
@@ -146,6 +150,7 @@ export class SettingsController {
     try {
       const status = await getJson<ConnectionStatus>('/status', this.abort.signal)
       this.credential = status.credential
+      this.reference = status.reference
       this.tested = status.ok ? { kind: 'ok', ledgers: status.ledgers ?? [] } : { kind: 'failed', message: status.message ?? 'unknown' }
     } catch (error) {
       this.tested = { kind: 'failed', message: error instanceof Error ? error.message : String(error) }
