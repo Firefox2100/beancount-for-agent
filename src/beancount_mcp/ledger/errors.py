@@ -67,3 +67,11 @@ class RecipeNotFound(LedgerStoreError):
 
 class RecipeError(LedgerStoreError):
     """The recipe cannot be applied with these parameters to this account."""
+
+
+class ImportNotFound(LedgerStoreError):
+    pass
+
+
+class ImportRefused(LedgerStoreError):
+    """An uploaded statement cannot be read or used, and why."""

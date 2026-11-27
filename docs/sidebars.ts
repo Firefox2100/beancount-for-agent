@@ -17,6 +17,7 @@ const sidebars: SidebarsConfig = {
         'concepts/accounts',
         'concepts/recipes',
         'concepts/views',
+        'concepts/imports',
         'concepts/security',
       ],
     },

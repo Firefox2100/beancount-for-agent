@@ -1,0 +1,6 @@
+{% extends "base.html" %}{% block title %}{{ review.filename }} · Beancount{% endblock %}{% block nav %}<a href="/ui/ledgers/{{ ledger }}/overview">Overview</a><a href="/ui/ledgers/{{ ledger }}/imports" aria-current="page">Statements</a>{% endblock %}{% block body %}
+<header class="page-head"><div><h1>{{ review.filename }}</h1><p>{{ review.account }} · {{ review.format }} · {{ review.start }} to {{ review.end }}{% if review.closing_balance is not none %} · closes at {{ review.closing_balance|num }} {{ review.currency }}{% endif %}</p></div></header>
+{% for w in review.warnings %}<div class="flash error">{{ w }}</div>{% endfor %}
+<div class="table-wrap"><table><thead><tr><th scope="col">#</th><th scope="col">Date</th><th scope="col">Description</th><th scope="col" class="num">Amount</th><th scope="col">Status</th></tr></thead><tbody>{% for line in review["items"] %}<tr><td>{{ line.number }}</td><td>{{ line.date }}</td><td>{% if line.payee %}<strong>{{ line.payee }}</strong> {% endif %}{{ line.description }}</td><td class="num">{{ line.amount|num }} {{ review.currency }}</td><td><span class="tag {{ 'approved' if line.status == 'imported' }}">{{ line.status|replace("_", " ") }}</span></td></tr>{% endfor %}</tbody></table></div>
+{% if review.omitted %}<p class="muted">{{ review.omitted }} more lines are not shown.</p>{% endif %}
+{% endblock %}

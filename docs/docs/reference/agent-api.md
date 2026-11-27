@@ -25,6 +25,9 @@ The agent API serves the [MCP tools](mcp-tools.md)' operations over HTTP, for ha
 | `GET` | `/agent/due` | Due |
 | `POST` | `/agent/expenses` | Record Expense |
 | `GET` | `/agent/financial-position` | Financial Position |
+| `GET` | `/agent/imports` | Statements the user has uploaded, with how many of their lines are still new. |
+| `GET` | `/agent/imports/{import_id}` | One uploaded statement, each line marked new, already imported or a possible duplicate. |
+| `POST` | `/agent/imports/{import_id}/proposal` | Propose the new lines of a statement as one batch for the user to approve. |
 | `POST` | `/agent/income` | Record Income |
 | `GET` | `/agent/ledgers` | List Ledgers |
 | `POST` | `/agent/ledgers` | Create Ledger |

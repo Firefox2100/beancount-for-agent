@@ -65,13 +65,18 @@ async def session(request: Request) -> str | None:
 
 async def checked_form(request: Request, cookie: str | None = Depends(session)) -> dict[str, str]:
     """The posted form, once it is known to come from a page this service served."""
+    return _verified(request, cookie, await request.form())[0]
+
+
+def _verified(request: Request, cookie: str | None, form) -> tuple[dict[str, str], dict]:
+    """The text fields of a form, and its files, after the origin and CSRF checks."""
     origin = request.headers.get("origin")
     if origin and urlparse(origin).netloc != request.headers.get("host"):
         raise HTTPException(403, "cross-site request refused")
-    form = {key: str(value) for key, value in (await request.form()).items()}
-    if not _matches(form.get("csrf", ""), _auth(request).csrf_token(cookie)):
+    fields = {key: str(value) for key, value in form.items() if isinstance(value, str)}
+    if not _matches(fields.get("csrf", ""), _auth(request).csrf_token(cookie)):
         raise HTTPException(403, "this page has expired, reload it and try again")
-    return form
+    return fields, {key: value for key, value in form.items() if not isinstance(value, str)}
 
 
 def _matches(a: str, b: str) -> bool:
@@ -177,6 +182,49 @@ async def resolve(request: Request, ledger: str, change_id: str, verb: str, form
     except LedgerStoreError as exc:
         return back("/ui/", f"Could not {verb} {change_id}: {exc}", "error")
     return back("/ui/", f"{'Approved' if verb == 'approve' else 'Rejected'} {change_id}.")
+
+
+@protected.get("/ledgers/{ledger}/imports")
+async def imports_page(request: Request, ledger: str):
+    ledgers, _, _ = _services(request)
+    service = request.app.state.import_service
+    accounts = sorted(a.name for a in await ledgers.list_accounts(ledger)
+                      if a.close_date is None and a.name.split(":")[0] in ("Assets", "Liabilities"))
+    return render(request, "imports.html", ledger=ledger, items=await service.summaries(ledger), accounts=accounts, formats=service.formats())
+
+
+@protected.post("/ledgers/{ledger}/imports")
+async def upload_import(request: Request, ledger: str, cookie: str | None = Depends(session)):
+    fields, files = _verified(request, cookie, await request.form())
+    service = request.app.state.import_service
+    path = f"/ui/ledgers/{ledger}/imports"
+    upload = files.get("file")
+    if upload is None or not getattr(upload, "filename", ""):
+        return back(path, "Choose a statement file first.", "error")
+    try:
+        data = await upload.read(service.max_bytes + 1)
+        created = await service.upload(ledger, fields.get("account", ""), upload.filename, data, fields.get("format") or None)
+    except LedgerStoreError as exc:
+        return back(path, str(exc), "error")
+    return back(path, f"Read {sum(len(c.statement.lines) for c in created)} transactions from {upload.filename}. Ask the agent to propose them.")
+
+
+@protected.get("/ledgers/{ledger}/imports/{import_id}")
+async def import_page(request: Request, ledger: str, import_id: str):
+    try:
+        review = await request.app.state.import_service.review(ledger, import_id, False, 2000)
+    except LedgerStoreError as exc:
+        raise HTTPException(404, str(exc)) from None
+    return render(request, "import.html", ledger=ledger, review=review)
+
+
+@protected.post("/ledgers/{ledger}/imports/{import_id}/delete")
+async def delete_import(request: Request, ledger: str, import_id: str, form: dict = Depends(checked_form)):
+    try:
+        await request.app.state.import_service.delete(ledger, import_id)
+    except LedgerStoreError as exc:
+        return back(f"/ui/ledgers/{ledger}/imports", str(exc), "error")
+    return back(f"/ui/ledgers/{ledger}/imports", "Statement removed.")
 
 
 def _total(held_by_currency: dict[str, Decimal], base: str | None, rates: dict[str, str]) -> str:

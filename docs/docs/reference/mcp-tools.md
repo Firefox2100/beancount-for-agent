@@ -46,6 +46,17 @@ Assets, liabilities and net position with original-currency amounts and approxim
 | `ledger` | string |  |
 | `points` | integer |  |
 
+### `get_import`
+
+The lines of an uploaded statement, numbered, each marked new, already imported or a possible duplicate.
+
+| Argument | Type | Required |
+| --- | --- | --- |
+| `import_id` | string | yes |
+| `ledger` | string |  |
+| `limit` | integer |  |
+| `only_new` | boolean |  |
+
 ### `get_open_items`
 
 Unsettled reimbursement claims, loans, invoices and bills, grouped by link.
@@ -70,6 +81,14 @@ Accounts with their type, currencies, description and the recipe ids they suppor
 | Argument | Type | Required |
 | --- | --- | --- |
 | `include_closed` | boolean |  |
+| `ledger` | string |  |
+
+### `list_imports`
+
+Bank statements the user has uploaded, with how many lines are still new. Only the user can upload one.
+
+| Argument | Type | Required |
+| --- | --- | --- |
 | `ledger` | string |  |
 
 ### `list_ledgers`
@@ -148,6 +167,24 @@ Propose opening an account such as Assets:Bank:Checking. `type` (see list_accoun
 | `ledger` | string |  |
 | `note` | string |  |
 | `type` | string |  |
+
+### `propose_import`
+
+Propose the new lines of an uploaded statement as one batch for the user to approve.
+
+Look at the lines with get_import first and choose an account for each from the descriptions.
+Lines already in the ledger are left out automatically.
+
+| Argument | Type | Required |
+| --- | --- | --- |
+| `assert_balance` | boolean |  |
+| `categories` | object |  |
+| `default_account` | string |  |
+| `import_id` | string | yes |
+| `include` | list of integer |  |
+| `ledger` | string |  |
+| `note` | string |  |
+| `skip` | list of integer |  |
 
 ### `reconcile_account`
 

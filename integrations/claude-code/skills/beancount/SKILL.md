@@ -48,6 +48,7 @@ The ledger is double-entry. You never need its file syntax, only these ideas:
 - Leave `ledger` out when there is only one ledger, and leave `date` out for today.
 - A bare number is enough when the account holds one currency. Otherwise write `"12.50 USD"`.
 - **Never add up, split or convert numbers yourself.** Write a formula and the service works it out exactly: `"18.65 + 6.60 + 7.40 GBP"` for a receipt, `"48 / 3 GBP"` for a split, `"42 * 1.15 GBP"` for a tip, or `1 / 8.73` for a rate. Use `+ - * /` and brackets only, write the currency once, and copy the numbers as they appear. A formula that cannot be worked out says what to send instead.
+- **Statements.** The user uploads a bank statement in the web interface; you cannot. Use `list_imports` to see what is waiting, `get_import` for its numbered lines (each marked new, already imported or a possible duplicate), then `propose_import` with an account for every line, chosen from its description (or one default account for the rest). Lines already in the ledger are left out for you. If you are unsure what a line is, ask the user, or give it the catch-all account they name rather than guessing.
 - Give the amounts the user told you, in the currencies they told you. When a bank converted for them, pass the converted amount or the rate they gave. Never invent a rate.
 - When settling an open item, leave the amount out to settle everything that is open.
 

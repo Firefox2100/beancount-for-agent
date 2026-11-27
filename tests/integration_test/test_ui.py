@@ -186,3 +186,25 @@ def test_overview_needs_a_session_when_a_token_is_set(tmp_path):
     with TestClient(app) as bare:
         response = bare.get("/ui/ledgers/main/overview", follow_redirects=False)
         assert response.status_code == 303 and "/ui/login" in response.headers["location"]
+
+
+def test_statements_are_uploaded_reviewed_and_removed_in_the_interface(client, ledger):
+    from pathlib import Path
+    sample = (Path(__file__).parents[1] / "samples" / "checking.ofx").read_bytes()
+    page = client.get("/ui/ledgers/main/imports")
+    assert "Statements" in page.text and "No statements uploaded." in page.text and "OFX" in page.text
+    sent = client.post("/ui/ledgers/main/imports", data={"csrf": csrf_of(page.text), "account": "Assets:Bank", "format": ""},
+                       files={"file": ("checking.ofx", sample)}, follow_redirects=False)
+    assert "Read 3 transactions" in followed(client, sent)
+    listing = client.get("/ui/ledgers/main/imports").text
+    assert "checking.ofx" in listing and "3 lines, 3 new" in listing
+    import_id = re.search(r"/imports/([0-9a-f]{32})\"", listing).group(1)
+    detail = client.get(f"/ui/ledgers/main/imports/{import_id}").text
+    assert "Cafe Nero" in detail and "-1,234.56 USD" in detail and "closes at 1,252.94 USD" in detail
+    bad = client.post("/ui/ledgers/main/imports", data={"csrf": csrf_of(page.text), "account": "Assets:Bank"},
+                      files={"file": ("n.txt", b"hello")}, follow_redirects=False)
+    assert "no importer recognises" in followed(client, bad)
+    forged = client.post("/ui/ledgers/main/imports", data={"csrf": "wrong", "account": "Assets:Bank"}, files={"file": ("a.ofx", sample)})
+    assert forged.status_code == 403
+    gone = post(client, f"/ui/ledgers/main/imports/{import_id}/delete")
+    assert "Statement removed" in followed(client, gone) and client.get("/ui/ledgers/main/imports").text.count("checking.ofx") == 0

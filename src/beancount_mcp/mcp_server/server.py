@@ -31,6 +31,7 @@ from beancount_mcp.models import (
 )
 from beancount_mcp.models.common import Rate
 from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, PoolStatus
+from beancount_mcp.models.imports import ImportReview, ImportSummary
 from beancount_mcp.recipes.helpers import Money
 from beancount_mcp.services.agent import AgentService
 
@@ -44,7 +45,8 @@ for everyday events, and use list_recipes then perform_recipe for anything accou
 such as card statements, loan repayments, reimbursements or trades. Amounts can be written
 like "12.50 USD", or as a formula such as "18.65 + 6.60 + 7.40 GBP" (use + - * / and brackets):
 the service works it out exactly, so never add up or convert numbers yourself. A `rate` can be
-a formula too, such as 1 / 8.73. The `ledger` argument can be left out when only one ledger exists.
+a formula too, such as 1 / 8.73. When the user has uploaded a bank statement, list_imports and
+get_import show its numbered lines and propose_import proposes them, with an account for each. The `ledger` argument can be left out when only one ledger exists.
 """
 
 Ledger = str | None
@@ -274,6 +276,37 @@ def create_mcp(agent: AgentService, raw_transactions: bool = False) -> FastMCP:
     async def get_credit_pools(ledger: Ledger = None) -> list[PoolStatus]:
         """Shared credit limits with used and available credit."""
         return await agent.pools(ledger)
+
+    @tool("read", read_only=True)
+    async def list_imports(ledger: Ledger = None) -> list[ImportSummary]:
+        """Bank statements the user has uploaded, with how many lines are still new. Only the user can upload one."""
+        return await agent.imports(ledger)
+
+    @tool("read", read_only=True)
+    async def get_import(import_id: str, ledger: Ledger = None, only_new: bool = True, limit: int = 200) -> ImportReview:
+        """The lines of an uploaded statement, numbered, each marked new, already imported or a possible duplicate."""
+        return await agent.import_review(ledger, import_id, only_new, min(limit, 500))
+
+    @tool("propose")
+    async def propose_import(
+        import_id: str,
+        categories: Annotated[dict[int, str], Field(description="Line number to the account on the other side, such as Expenses:Food.")] = {},
+        default_account: Annotated[str | None, Field(description="The other account for every line not in categories.")] = None,
+        skip: list[int] = [],
+        include: Annotated[list[int], Field(description="Lines to add although they look already entered.")] = [],
+        assert_balance: bool = False,
+        ledger: Ledger = None,
+        note: Note = None,
+        context: Context = None,
+    ) -> PendingChange:
+        """Propose the new lines of an uploaded statement as one batch for the user to approve.
+
+        Look at the lines with get_import first and choose an account for each from the descriptions.
+        Lines already in the ledger are left out automatically.
+        """
+        return await agent.propose_import(
+            ledger, import_id, categories, default_account, skip, include, assert_balance, note, _caller(context), None
+        )
 
     @tool("read", read_only=True)
     async def list_my_proposals(

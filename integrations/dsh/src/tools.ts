@@ -30,7 +30,7 @@ export interface GroupedTool {
  */
 export const CATALOGUE: Record<'core' | Group, readonly string[]> = {
   core: ['finance_ledgers', 'finance_use_ledger', 'finance_create_ledger', 'finance_accounts', 'finance_balances', 'finance_transactions', 'finance_proposals'],
-  record: ['finance_expense', 'finance_income', 'finance_transfer', 'finance_reconcile', 'finance_recipes', 'finance_recipe', 'finance_open_account', 'finance_close_account', 'finance_amend', 'finance_delete', 'finance_withdraw'],
+  record: ['finance_expense', 'finance_income', 'finance_transfer', 'finance_reconcile', 'finance_recipes', 'finance_recipe', 'finance_open_account', 'finance_close_account', 'finance_amend', 'finance_delete', 'finance_withdraw', 'finance_statements', 'finance_import'],
   analysis: ['finance_position', 'finance_open_items', 'finance_due', 'finance_credit_pools'],
 }
 
@@ -240,6 +240,28 @@ export function financeTools(deps: ToolDeps): GroupedTool[] {
       const change = await write(session, `/agent/proposals/${encodeURIComponent(String(args.id))}/withdraw`, { ledger, note: args.note }, signal)
       return format.proposal(change)
     }),
+
+    textTool('record', 'finance_statements', 'Bank statements the user has uploaded. Without an id, lists them; with one, shows its numbered lines, each marked new, already imported or a possible duplicate. Only the user can upload a statement.', {
+      id: string('A statement id from the list, to see its lines.'),
+      all: { type: 'boolean', description: 'Also show lines already in the ledger. Defaults to new lines only.' },
+    }, async ({ args, session, ledger, signal }) =>
+      args.id === undefined
+        ? format.statements(await read(session, '/agent/imports', { ledger }, signal))
+        : format.statement(await read(session, `/agent/imports/${encodeURIComponent(String(args.id))}`, { ledger, only_new: args.all === true ? 'false' : 'true' }, signal))),
+
+    textTool('record', 'finance_import', 'Propose the new lines of an uploaded statement as one batch for the user to approve. Read the lines with finance_statements first and give each the account on its other side, such as Expenses:Food, chosen from its description. Lines already in the ledger are left out.', {
+      id: string('The statement id.', true),
+      categories: { type: 'object', additionalProperties: true, description: 'Line number to the account on the other side of it, such as {"1": "Expenses:Food", "2": "Income:Salary"}.' },
+      default_account: string('The other account for every line not in categories.'),
+      skip: { type: 'array', items: { type: 'integer' }, description: 'Line numbers to leave out.' },
+      include: { type: 'array', items: { type: 'integer' }, description: 'Line numbers to add although they look already entered.' },
+      assert_balance: { type: 'boolean', description: 'Also assert the statement\'s closing balance the day after it ends.' },
+      note: string('Why, for the user who approves it.'),
+    }, async ({ args, session, ledger, signal }) =>
+      proposed(await write(session, `/agent/imports/${encodeURIComponent(String(args.id))}/proposal`, {
+        ledger, categories: args.categories, default_account: args.default_account, skip: args.skip, include: args.include,
+        assert_balance: args.assert_balance, note: args.note,
+      }, signal))),
 
     textTool('analysis', 'finance_open_items', 'Unsettled reimbursement claims, loans, invoices and bills, with what is still open on each.', {
       account: string('Only this receivable or payable account.'),

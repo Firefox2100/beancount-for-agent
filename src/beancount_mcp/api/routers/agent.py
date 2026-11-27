@@ -28,6 +28,7 @@ from beancount_mcp.models import (
 )
 from beancount_mcp.models.common import Rate
 from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, PoolStatus, ReferenceRateStatus
+from beancount_mcp.models.imports import ImportReview, ImportSummary
 from beancount_mcp.recipes.helpers import Money
 
 router = APIRouter(prefix="/agent", tags=["agent"])
@@ -172,6 +173,21 @@ async def due(agent: AgentServiceDep, ledger: LedgerQuery = None, within_days: i
     return await agent.due(ledger, within_days)
 
 
+@router.get("/imports")
+async def imports(agent: AgentServiceDep, ledger: LedgerQuery = None) -> list[ImportSummary]:
+    """Statements the user has uploaded, with how many of their lines are still new."""
+    return await agent.imports(ledger)
+
+
+@router.get("/imports/{import_id}")
+async def import_review(
+    import_id: str, agent: AgentServiceDep, ledger: LedgerQuery = None, only_new: bool = True,
+    limit: Annotated[int, Query(ge=1, le=500)] = 200,
+) -> ImportReview:
+    """One uploaded statement, each line marked new, already imported or a possible duplicate."""
+    return await agent.import_review(ledger, import_id, only_new, limit)
+
+
 @router.get("/credit-pools")
 async def credit_pools(agent: AgentServiceDep, ledger: LedgerQuery = None) -> list[PoolStatus]:
     return await agent.pools(ledger)
@@ -249,6 +265,23 @@ async def open_account(request: OpenAccountRequest, agent: AgentServiceDep, call
 @router.post("/accounts/close", status_code=201)
 async def close_account(request: CloseAccountRequest, agent: AgentServiceDep, caller: AgentCaller) -> PendingChange:
     return await agent.close_account(request.ledger, request.account, request.date, request.note, caller, None)
+
+
+class ImportProposal(Proposal):
+    categories: dict[int, str] = Field(default_factory=dict, description="Line number to the account on the other side of it.")
+    default_account: str | None = Field(default=None, description="The other account for every line not in `categories`.")
+    skip: list[int] = Field(default_factory=list, description="Line numbers to leave out.")
+    include: list[int] = Field(default_factory=list, description="Line numbers to add although they look already entered.")
+    assert_balance: bool = Field(default=False, description="Also assert the statement's closing balance the day after it ends.")
+
+
+@router.post("/imports/{import_id}/proposal", status_code=201)
+async def propose_import(import_id: str, request: ImportProposal, agent: AgentServiceDep, caller: AgentCaller) -> PendingChange:
+    """Propose the new lines of a statement as one batch for the user to approve."""
+    return await agent.propose_import(
+        request.ledger, import_id, request.categories, request.default_account, request.skip, request.include,
+        request.assert_balance, request.note, caller, None,
+    )
 
 
 @router.post("/actions", status_code=201)

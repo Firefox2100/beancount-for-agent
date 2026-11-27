@@ -15,6 +15,7 @@ Settings are read with `pydantic-settings`. Every variable starts with `BEANCOUN
 | `BEANCOUNT_MCP_MCP_ENABLED` | `false` | Serve the MCP endpoint at `/mcp`. |
 | `BEANCOUNT_MCP_MCP_RAW_TRANSACTIONS` | `false` | Also expose a tool that takes raw postings. Off by default, because recipes are safer. |
 | `BEANCOUNT_MCP_AGENT_APPROVAL_REQUIRED` | `true` | Agent changes wait for approval. With `false` they are applied at once and recorded as approved. |
+| `BEANCOUNT_MCP_IMPORT_MAX_BYTES` | `5000000` | The largest statement file that can be uploaded. |
 | `BEANCOUNT_MCP_REFERENCE_RATES_ENABLED` | `false` | Enable approximate, read-only reference valuations from Frankfurter. These values never drive ledger entries. |
 | `BEANCOUNT_MCP_REFERENCE_RATES_URL` | `https://api.frankfurter.dev/v2` | Frankfurter v2 root. May point to a self-hosted instance. |
 | `BEANCOUNT_MCP_REFERENCE_RATES_FRESH_HOURS` | `24` | How long a fetched rate remains fresh. |

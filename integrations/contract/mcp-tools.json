@@ -380,6 +380,45 @@
     ]
   },
   {
+    "description": "The lines of an uploaded statement, numbered, each marked new, already imported or a possible duplicate.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "import_id": {
+          "type": "string"
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "limit": {
+          "default": 200,
+          "type": "integer"
+        },
+        "only_new": {
+          "default": true,
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "import_id"
+      ],
+      "type": "object"
+    },
+    "name": "get_import",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
     "description": "Unsettled reimbursement claims, loans, invoices and bills, grouped by link.",
     "inputSchema": {
       "additionalProperties": false,
@@ -464,6 +503,31 @@
       "type": "object"
     },
     "name": "list_accounts",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
+    "description": "Bank statements the user has uploaded, with how many lines are still new. Only the user can upload one.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "type": "object"
+    },
+    "name": "list_imports",
     "readOnly": true,
     "tags": [
       "read"
@@ -685,6 +749,87 @@
     "tags": [
       "propose",
       "recipe"
+    ]
+  },
+  {
+    "description": "Propose the new lines of an uploaded statement as one batch for the user to approve.\n\nLook at the lines with get_import first and choose an account for each from the descriptions.\nLines already in the ledger are left out automatically.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "assert_balance": {
+          "default": false,
+          "type": "boolean"
+        },
+        "categories": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "default": {},
+          "description": "Line number to the account on the other side, such as Expenses:Food.",
+          "type": "object"
+        },
+        "default_account": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The other account for every line not in categories."
+        },
+        "import_id": {
+          "type": "string"
+        },
+        "include": {
+          "default": [],
+          "description": "Lines to add although they look already entered.",
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "skip": {
+          "default": [],
+          "items": {
+            "type": "integer"
+          },
+          "type": "array"
+        }
+      },
+      "required": [
+        "import_id"
+      ],
+      "type": "object"
+    },
+    "name": "propose_import",
+    "readOnly": false,
+    "tags": [
+      "propose"
     ]
   },
   {

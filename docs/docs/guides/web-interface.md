@@ -20,6 +20,10 @@ Each ledger also links to its **history**: the last fifty resolved proposals wit
 
 Each ledger has an **overview**, the same one the DeepSeek Harness dock shows: assets, liabilities and net position over the last twelve weeks or months, the asset allocation, what is due soon, and every account grouped by type with its balance. Valuations are approximate reference values and are never written to the ledger (see [Views](../concepts/views.md)); the **Refresh rates** button throws the rate cache away and prices the ledger again. Long numbers are written with commas, such as `123,456.78`, here and in the dock.
 
+## Statements
+
+**Statements** (per ledger) is where you upload a bank file for an account. It lists what was uploaded, how many lines are still new and any warnings, and each statement opens to its numbered lines with their status. The agent then proposes the new lines for you to approve in the inbox. See [Importing statements](../concepts/imports.md).
+
 ## Accounts
 
 The accounts of a ledger, with their type, currencies and bank. Click one for its page, which has two forms:

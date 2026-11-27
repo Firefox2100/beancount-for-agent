@@ -40,7 +40,9 @@ from beancount_mcp.models.common import Amount
 from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, PoolStatus, ReferenceRateStatus
 from beancount_mcp.recipes.helpers import Money, amount_of
 from beancount_mcp.services.actions import ActionService
+from beancount_mcp.models.imports import ImportReview, ImportSummary
 from beancount_mcp.services.changes import ChangeService
+from beancount_mcp.services.imports import ImportService
 from beancount_mcp.services.ledgers import LedgerService
 from beancount_mcp.services.resolve import resolve_account, resolve_params
 from beancount_mcp.services.views import ViewService
@@ -57,12 +59,14 @@ class AgentService:
         changes: ChangeService,
         actions: ActionService,
         views: ViewService,
+        imports: ImportService,
     ):
         self._store = store
         self._ledgers = ledgers
         self._changes = changes
         self._actions = actions
         self._views = views
+        self._imports = imports
 
     async def resolve_ledger(self, ledger: str | None) -> str:
         """The named ledger, or the only one when there is exactly one."""
@@ -127,6 +131,24 @@ class AgentService:
 
     async def financial_position(self, ledger: str | None, interval: str, points: int) -> FinancialPosition:
         return await self._views.financial_position(await self.resolve_ledger(ledger), interval, points)
+
+    async def imports(self, ledger: str | None) -> list[ImportSummary]:
+        return await self._imports.summaries(await self.resolve_ledger(ledger))
+
+    async def import_review(self, ledger: str | None, import_id: str, only_new: bool, limit: int) -> ImportReview:
+        return await self._imports.review(await self.resolve_ledger(ledger), import_id, only_new, limit)
+
+    async def propose_import(
+        self, ledger: str | None, import_id: str, categories: dict[int, str], default_account: str | None,
+        skip: list[int], include: list[int], assert_balance: bool, note: str | None, caller: Caller, version: str | None,
+    ) -> PendingChange:
+        ledger_id = await self.resolve_ledger(ledger)
+        accounts = await self._ledgers.list_accounts(ledger_id)
+        categories = {number: resolve_account(accounts, name) for number, name in categories.items()}
+        default = resolve_account(accounts, default_account) if default_account else None
+        return await self._imports.propose(
+            ledger_id, import_id, categories, default, skip, include, assert_balance, note, caller, version
+        )
 
     async def reference_rate_status(self) -> ReferenceRateStatus:
         return await self._views.reference_rate_status()

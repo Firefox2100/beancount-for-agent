@@ -54,6 +54,16 @@ The complete CRUD surface, used by people, scripts and harness plugins that act 
 | `GET` | `/ledgers/{ledger_id}/directives/{record_id}` | Get Directive |
 | `PUT` | `/ledgers/{ledger_id}/directives/{record_id}` | Update Directive |
 
+## Imports
+
+| Method | Path | What it does |
+| --- | --- | --- |
+| `GET` | `/ledgers/{ledger_id}/import-formats` | The file formats that can be read: the built-in standards and any installed plugins. |
+| `GET` | `/ledgers/{ledger_id}/imports` | List Imports |
+| `POST` | `/ledgers/{ledger_id}/imports` | Upload Statement |
+| `DELETE` | `/ledgers/{ledger_id}/imports/{import_id}` | Delete Import |
+| `GET` | `/ledgers/{ledger_id}/imports/{import_id}` | Get Import |
+
 ## Ledgers
 
 | Method | Path | What it does |

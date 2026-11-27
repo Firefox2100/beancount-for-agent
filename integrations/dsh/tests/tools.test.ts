@@ -112,6 +112,26 @@ describe('the finance tools', () => {
     expect(service?.requests[0]?.query).toBe('?ledger=personal&interval=month&points=12')
   })
 
+  it('list uploaded statements, show one\'s numbered lines, and propose them with a category for each', async () => {
+    const summary = { id: 'a'.repeat(32), filename: 'march.ofx', account: 'Assets:Bank', start: '2026-03-01', end: '2026-03-10', lines: 2, new: 1, warnings: ['the lines add up wrongly'] }
+    const review = { ...summary, currency: 'GBP', closing_balance: '1252.94', omitted: 0, items: [
+      { number: 1, date: '2026-03-02', amount: '-12.50', payee: 'Cafe', description: 'Lunch', status: 'new' },
+      { number: 2, date: '2026-03-03', amount: '-5.00', payee: null, description: 'Tea', status: 'possible_duplicate' },
+    ] }
+    const { run } = await setup({
+      'GET /agent/imports': { body: [summary] },
+      [`GET /agent/imports/${summary.id}`]: { body: review },
+      [`POST /agent/imports/${summary.id}/proposal`]: { status: 201, body: change },
+    })
+    expect(await run('finance_statements', {})).toMatch(/march.ofx.*2 lines, 1 new\n {2}warning: the lines add up wrongly/)
+    const lines = await run('finance_statements', { id: summary.id })
+    expect(lines).toMatch(/1 {2}2026-03-02 {2}-12.50 {2}Cafe - Lunch\n2 {2}2026-03-03 {2}-5.00 {2}Tea {2}\[possible duplicate\]/)
+    expect(service?.requests[1]?.query).toBe('?ledger=personal&only_new=true')
+    const text = await run('finance_import', { id: summary.id, categories: { 1: 'Expenses:Food' }, default_account: 'Expenses:Other', include: [2] })
+    expect(JSON.parse(service?.requests[2]?.body ?? '{}')).toEqual({ ledger: 'personal', categories: { 1: 'Expenses:Food' }, default_account: 'Expenses:Other', include: [2] })
+    expect(text).toMatch(/waiting for the user to approve/)
+  })
+
   it('amend and delete address the transaction by id', async () => {
     const { run } = await setup({
       'POST /agent/transactions/abc/amend': { status: 201, body: change },

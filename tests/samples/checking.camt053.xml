@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Document xmlns="urn:iso:std:iso:20022:tech:xsd:camt.053.001.02"><BkToCstmrStmt><Stmt>
+<Acct><Id><IBAN>GB29NWBK60161331926819</IBAN></Id><Ccy>USD</Ccy></Acct>
+<Bal><Tp><CdOrPrtry><Cd>OPBD</Cd></CdOrPrtry></Tp><Amt Ccy="USD">1000.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-03-01</Dt></Dt></Bal>
+<Bal><Tp><CdOrPrtry><Cd>CLBD</Cd></CdOrPrtry></Tp><Amt Ccy="USD">2252.94</Amt><CdtDbtInd>CRDT</CdtDbtInd><Dt><Dt>2026-03-10</Dt></Dt></Bal>
+<Ntry><Amt Ccy="USD">12.50</Amt><CdtDbtInd>DBIT</CdtDbtInd><Sts>BOOK</Sts><BookgDt><Dt>2026-03-02</Dt></BookgDt><AcctSvcrRef>R1</AcctSvcrRef>
+<NtryDtls><TxDtls><RltdPties><Cdtr><Nm>Cafe Nero</Nm></Cdtr></RltdPties><RmtInf><Ustrd>Lunch</Ustrd></RmtInf></TxDtls></NtryDtls></Ntry>
+<Ntry><Amt Ccy="USD">1234.56</Amt><CdtDbtInd>DBIT</CdtDbtInd><Sts>BOOK</Sts><BookgDt><Dt>2026-03-05</Dt></BookgDt><AcctSvcrRef>R2</AcctSvcrRef><AddtlNtryInf>Rent</AddtlNtryInf></Ntry>
+<Ntry><Amt Ccy="USD">2500.00</Amt><CdtDbtInd>CRDT</CdtDbtInd><Sts>BOOK</Sts><BookgDt><Dt>2026-03-09</Dt></BookgDt><AcctSvcrRef>R3</AcctSvcrRef>
+<NtryDtls><TxDtls><RltdPties><Dbtr><Nm>Employer</Nm></Dbtr></RltdPties></TxDtls></NtryDtls></Ntry>
+<Ntry><Amt Ccy="USD">99.00</Amt><CdtDbtInd>DBIT</CdtDbtInd><Sts>PDNG</Sts><BookgDt><Dt>2026-03-10</Dt></BookgDt></Ntry>
+</Stmt></BkToCstmrStmt></Document>

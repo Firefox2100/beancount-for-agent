@@ -22,6 +22,7 @@ class Settings(BaseSettings):
     mcp_raw_transactions: bool = False
     agent_approval_required: bool = True
     auth_token: SecretStr | None = None
+    import_max_bytes: int = 5_000_000
     reference_rates_enabled: bool = False
     reference_rates_url: str = "https://api.frankfurter.dev/v2"
     reference_rates_fresh_hours: int = 24

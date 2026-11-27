@@ -146,3 +146,16 @@ export function proposal(change: Change): string {
 export function proposals(items: Change[]): string {
   return items.length === 0 ? 'No proposals.' : items.map(proposal).join('\n\n')
 }
+
+export function statements(items: any[]): string {
+  if (items.length === 0) return 'The user has not uploaded any statements.'
+  return items.map(item => `${item.id}  ${item.filename}  ${item.account}  ${item.start} to ${item.end}  ${item.lines} lines, ${item.new} new${item.warnings.length > 0 ? `\n  warning: ${item.warnings.join('; ')}` : ''}`).join('\n')
+}
+
+export function statement(review: any): string {
+  const head = `${review.filename} for ${review.account}, ${review.start} to ${review.end}, ${review.currency}${review.closing_balance == null ? '' : `, closes at ${review.closing_balance}`}`
+  const warnings = review.warnings.map((warning: string) => `warning: ${warning}`)
+  const lines = review.items.map((line: any) => `${line.number}  ${line.date}  ${line.amount}  ${[line.payee, line.description].filter(Boolean).join(' - ')}${line.status === 'new' ? '' : `  [${line.status.replace('_', ' ')}]`}`)
+  const more = review.omitted > 0 ? [`${review.omitted} more lines are not shown`] : []
+  return [head, ...warnings, ...(lines.length > 0 ? lines : ['No new lines: everything is already in the ledger.']), ...more].join('\n')
+}

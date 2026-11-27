@@ -1155,6 +1155,39 @@
         "title": "Batch",
         "type": "object"
       },
+      "Body_upload_statement_ledgers__ledger_id__imports_post": {
+        "properties": {
+          "account": {
+            "description": "Full name of the account the statement belongs to.",
+            "title": "Account",
+            "type": "string"
+          },
+          "file": {
+            "contentMediaType": "application/octet-stream",
+            "description": "The statement as the bank exports it.",
+            "title": "File",
+            "type": "string"
+          },
+          "format": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "An importer id. Left out, the file is recognised.",
+            "title": "Format"
+          }
+        },
+        "required": [
+          "file",
+          "account"
+        ],
+        "title": "Body_upload_statement_ledgers__ledger_id__imports_post",
+        "type": "object"
+      },
       "Caller": {
         "description": "Who is making a request. Declared by the client, not authenticated.",
         "properties": {
@@ -1690,6 +1723,24 @@
         "title": "FinancialPosition",
         "type": "object"
       },
+      "FormatInfo": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title"
+        ],
+        "title": "FormatInfo",
+        "type": "object"
+      },
       "HTTPValidationError": {
         "properties": {
           "detail": {
@@ -1701,6 +1752,277 @@
           }
         },
         "title": "HTTPValidationError",
+        "type": "object"
+      },
+      "ImportProposal": {
+        "properties": {
+          "assert_balance": {
+            "default": false,
+            "description": "Also assert the statement's closing balance the day after it ends.",
+            "title": "Assert Balance",
+            "type": "boolean"
+          },
+          "categories": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "Line number to the account on the other side of it.",
+            "title": "Categories",
+            "type": "object"
+          },
+          "default_account": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The other account for every line not in `categories`.",
+            "title": "Default Account"
+          },
+          "include": {
+            "description": "Line numbers to add although they look already entered.",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Include",
+            "type": "array"
+          },
+          "ledger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ledger id. May be left out when there is exactly one.",
+            "title": "Ledger"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why, for the person who approves it.",
+            "title": "Note"
+          },
+          "skip": {
+            "description": "Line numbers to leave out.",
+            "items": {
+              "type": "integer"
+            },
+            "title": "Skip",
+            "type": "array"
+          }
+        },
+        "title": "ImportProposal",
+        "type": "object"
+      },
+      "ImportReview": {
+        "description": "A statement with each line checked against what the ledger already holds.",
+        "properties": {
+          "account": {
+            "title": "Account",
+            "type": "string"
+          },
+          "change_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Change Ids",
+            "type": "array"
+          },
+          "closing_balance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Closing Balance"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "format": {
+            "title": "Format",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/ReviewedLine"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "lines": {
+            "title": "Lines",
+            "type": "integer"
+          },
+          "new": {
+            "title": "New",
+            "type": "integer"
+          },
+          "omitted": {
+            "default": 0,
+            "description": "Lines left out of `items` by the limit.",
+            "title": "Omitted",
+            "type": "integer"
+          },
+          "opening_balance": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Opening Balance"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "account",
+          "format",
+          "currency",
+          "lines",
+          "new",
+          "items"
+        ],
+        "title": "ImportReview",
+        "type": "object"
+      },
+      "ImportSummary": {
+        "properties": {
+          "account": {
+            "title": "Account",
+            "type": "string"
+          },
+          "change_ids": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Change Ids",
+            "type": "array"
+          },
+          "currency": {
+            "title": "Currency",
+            "type": "string"
+          },
+          "end": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "End"
+          },
+          "filename": {
+            "title": "Filename",
+            "type": "string"
+          },
+          "format": {
+            "title": "Format",
+            "type": "string"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "lines": {
+            "title": "Lines",
+            "type": "integer"
+          },
+          "new": {
+            "title": "New",
+            "type": "integer"
+          },
+          "start": {
+            "anyOf": [
+              {
+                "format": "date",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start"
+          },
+          "warnings": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Warnings",
+            "type": "array"
+          }
+        },
+        "required": [
+          "id",
+          "filename",
+          "account",
+          "format",
+          "currency",
+          "lines",
+          "new"
+        ],
+        "title": "ImportSummary",
         "type": "object"
       },
       "IncomeRequest": {
@@ -1909,6 +2231,15 @@
         ],
         "title": "LedgerStatus",
         "type": "object"
+      },
+      "LineStatus": {
+        "enum": [
+          "new",
+          "imported",
+          "possible_duplicate"
+        ],
+        "title": "LineStatus",
+        "type": "string"
       },
       "NoteDirective": {
         "properties": {
@@ -2996,6 +3327,76 @@
           }
         },
         "title": "ResolveChangeRequest",
+        "type": "object"
+      },
+      "ReviewedLine": {
+        "properties": {
+          "amount": {
+            "description": "From the account holder's side: money in is positive, money out is negative.",
+            "title": "Amount",
+            "type": "string"
+          },
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "description": {
+            "default": "",
+            "title": "Description",
+            "type": "string"
+          },
+          "matches": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The ledger transaction it was matched with, when it was.",
+            "title": "Matches"
+          },
+          "number": {
+            "default": 0,
+            "description": "Position in the statement, from 1. Proposals refer to lines by it.",
+            "title": "Number",
+            "type": "integer"
+          },
+          "payee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Payee"
+          },
+          "reference": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The bank's own id for the transaction, when the file has one.",
+            "title": "Reference"
+          },
+          "status": {
+            "$ref": "#/components/schemas/LineStatus"
+          }
+        },
+        "required": [
+          "date",
+          "amount",
+          "status"
+        ],
+        "title": "ReviewedLine",
         "type": "object"
       },
       "SetAccountDetails": {
@@ -4788,6 +5189,230 @@
           }
         },
         "summary": "Financial Position",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/imports": {
+      "get": {
+        "description": "Statements the user has uploaded, with how many of their lines are still new.",
+        "operationId": "imports_agent_imports_get",
+        "parameters": [
+          {
+            "description": "Ledger id. May be left out when there is exactly one.",
+            "in": "query",
+            "name": "ledger",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Ledger id. May be left out when there is exactly one.",
+              "title": "Ledger"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImportSummary"
+                  },
+                  "title": "Response Imports Agent Imports Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Imports",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/imports/{import_id}": {
+      "get": {
+        "description": "One uploaded statement, each line marked new, already imported or a possible duplicate.",
+        "operationId": "import_review_agent_imports__import_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "import_id",
+            "required": true,
+            "schema": {
+              "title": "Import Id",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Ledger id. May be left out when there is exactly one.",
+            "in": "query",
+            "name": "ledger",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Ledger id. May be left out when there is exactly one.",
+              "title": "Ledger"
+            }
+          },
+          {
+            "in": "query",
+            "name": "only_new",
+            "required": false,
+            "schema": {
+              "default": true,
+              "title": "Only New",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 500,
+              "minimum": 1,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Review",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/imports/{import_id}/proposal": {
+      "post": {
+        "description": "Propose the new lines of a statement as one batch for the user to approve.",
+        "operationId": "propose_import_agent_imports__import_id__proposal_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "import_id",
+            "required": true,
+            "schema": {
+              "title": "Import Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Client-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Session-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ImportProposal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingChange"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Propose Import",
         "tags": [
           "agent"
         ]
@@ -7782,6 +8407,360 @@
         "summary": "Financial Position",
         "tags": [
           "views"
+        ]
+      }
+    },
+    "/ledgers/{ledger_id}/import-formats": {
+      "get": {
+        "description": "The file formats that can be read: the built-in standards and any installed plugins.",
+        "operationId": "import_formats_ledgers__ledger_id__import_formats_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/FormatInfo"
+                  },
+                  "title": "Response Import Formats Ledgers  Ledger Id  Import Formats Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Import Formats",
+        "tags": [
+          "imports"
+        ]
+      }
+    },
+    "/ledgers/{ledger_id}/imports": {
+      "get": {
+        "operationId": "list_imports_ledgers__ledger_id__imports_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImportSummary"
+                  },
+                  "title": "Response List Imports Ledgers  Ledger Id  Imports Get",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Imports",
+        "tags": [
+          "imports"
+        ]
+      },
+      "post": {
+        "operationId": "upload_statement_ledgers__ledger_id__imports_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Actor",
+            "required": false,
+            "schema": {
+              "default": "user",
+              "enum": [
+                "user",
+                "agent"
+              ],
+              "title": "X-Actor",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Client-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Session-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "$ref": "#/components/schemas/Body_upload_statement_ledgers__ledger_id__imports_post"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "items": {
+                    "$ref": "#/components/schemas/ImportSummary"
+                  },
+                  "title": "Response Upload Statement Ledgers  Ledger Id  Imports Post",
+                  "type": "array"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Upload Statement",
+        "tags": [
+          "imports"
+        ]
+      }
+    },
+    "/ledgers/{ledger_id}/imports/{import_id}": {
+      "delete": {
+        "operationId": "delete_import_ledgers__ledger_id__imports__import_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "import_id",
+            "required": true,
+            "schema": {
+              "title": "Import Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Actor",
+            "required": false,
+            "schema": {
+              "default": "user",
+              "enum": [
+                "user",
+                "agent"
+              ],
+              "title": "X-Actor",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Client-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Session-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Import",
+        "tags": [
+          "imports"
+        ]
+      },
+      "get": {
+        "operationId": "get_import_ledgers__ledger_id__imports__import_id__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "import_id",
+            "required": true,
+            "schema": {
+              "title": "Import Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "query",
+            "name": "only_new",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Only New",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "schema": {
+              "default": 200,
+              "maximum": 2000,
+              "minimum": 0,
+              "title": "Limit",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ImportReview"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Import",
+        "tags": [
+          "imports"
         ]
       }
     },

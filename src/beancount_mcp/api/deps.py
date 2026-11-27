@@ -6,6 +6,7 @@ from beancount_mcp.models import Caller
 from beancount_mcp.services.actions import ActionService
 from beancount_mcp.services.agent import AgentService
 from beancount_mcp.services.changes import ChangeService
+from beancount_mcp.services.imports import ImportService
 from beancount_mcp.services.ledgers import LedgerService
 from beancount_mcp.services.profiles import ProfileService
 from beancount_mcp.services.views import ViewService
@@ -31,6 +32,10 @@ def get_view_service(request: Request) -> ViewService:
     return request.app.state.view_service
 
 
+def get_import_service(request: Request) -> ImportService:
+    return request.app.state.import_service
+
+
 def get_agent_service(request: Request) -> AgentService:
     return request.app.state.agent_service
 
@@ -48,6 +53,7 @@ ChangeServiceDep = Annotated[ChangeService, Depends(get_change_service)]
 ActionServiceDep = Annotated[ActionService, Depends(get_action_service)]
 ProfileServiceDep = Annotated[ProfileService, Depends(get_profile_service)]
 ViewServiceDep = Annotated[ViewService, Depends(get_view_service)]
+ImportServiceDep = Annotated[ImportService, Depends(get_import_service)]
 AgentServiceDep = Annotated[AgentService, Depends(get_agent_service)]
 CallerDep = Annotated[Caller, Depends(get_caller)]
 
