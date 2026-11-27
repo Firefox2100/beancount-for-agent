@@ -4,7 +4,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-session/client'
 import type {} from '@deepseek-ai/dsh-client-ui-sidebar-right/client'
 import type { SessionId } from '@deepseek-ai/dsh-session/types'
 import type { Group } from '../types.ts'
-import { getJson, postJson, type Interval, type OverviewData, type PendingItem } from './api.ts'
+import { getJson, postJson, type FinancialPosition, type Interval, type OverviewData, type PendingItem, type PositionData } from './api.ts'
 import { Approval } from './Approval.tsx'
 import type { BeancountKey } from './locales.ts'
 import { Overview } from './Overview.tsx'
@@ -35,6 +35,8 @@ export function Page({ useProjection, sessionId, drafts, t }: Props) {
   const [interval, setIntervalState] = useState<Interval>(drafts.get(intervalKey) === 'week' ? 'week' : 'month')
   const [overview, setOverview] = useState<OverviewData | null>(null)
   const [pending, setPending] = useState<PendingItem[] | null>(null)
+  const [position, setPosition] = useState<FinancialPosition | null>(null)
+  const [problem, setProblem] = useState<string | null>(null)
   const [overviewError, setOverviewError] = useState<string | null>(null)
   const [pendingError, setPendingError] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
@@ -56,6 +58,25 @@ export function Page({ useProjection, sessionId, drafts, t }: Props) {
       if (controller.signal.aborted) return
       if (overviewResult.status === 'fulfilled') { setOverview(overviewResult.value); setOverviewError(null) } else setOverviewError(message(overviewResult.reason))
       if (pendingResult.status === 'fulfilled') { setPending(pendingResult.value); setPendingError(null) } else setPendingError(message(pendingResult.reason))
+    })()
+    return () => { controller.abort() }
+  }, [session, turns, nonce, interval])
+
+  // The valuation is slow enough that the accounts must not wait for it: it is asked for on its own, and the chart
+  // appears when it arrives. Its failure is a sentence under the heading, never a blank page.
+  useEffect(() => {
+    const controller = new AbortController()
+    void (async () => {
+      try {
+        const data = await getJson<PositionData>(`/position?session=${encodeURIComponent(session)}&interval=${interval}`, controller.signal)
+        if (controller.signal.aborted) return
+        setPosition(data.position)
+        setProblem(data.problem)
+      } catch (error) {
+        if (controller.signal.aborted) return
+        setPosition(null)
+        setProblem(message(error))
+      }
     })()
     return () => { controller.abort() }
   }, [session, turns, nonce, interval])
@@ -85,6 +106,8 @@ export function Page({ useProjection, sessionId, drafts, t }: Props) {
           data={overview}
           error={overviewError}
           busy={busy}
+          position={position}
+          problem={problem}
           onRefresh={refresh}
           interval={interval}
           onInterval={(next) => { drafts.set(intervalKey, next); setIntervalState(next) }}

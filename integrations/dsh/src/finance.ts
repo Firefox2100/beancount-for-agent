@@ -15,6 +15,8 @@ export interface CallOptions {
   query?: Record<string, string | number | undefined>
   body?: unknown
   signal?: AbortSignal
+  /** Replaces the settings' timeout for this call, for the requests that are allowed to take longer. */
+  timeoutMs?: number
 }
 
 /** Who is asking, as the service records it: the model's tools are an agent, the dock page is the user. */
@@ -42,12 +44,18 @@ export class Finance {
       ...(caller.actor === 'agent' ? { sessionId: caller.session } : {}),
       fetch: this.fetchImpl,
     })
-    const signal = options.signal === undefined ? AbortSignal.timeout(settings.timeoutMs) : AbortSignal.any([options.signal, AbortSignal.timeout(settings.timeoutMs)])
+    const timeout = options.timeoutMs ?? settings.timeoutMs
+    const signal = options.signal === undefined ? AbortSignal.timeout(timeout) : AbortSignal.any([options.signal, AbortSignal.timeout(timeout)])
     try {
       return (await client.request(method, path, { ...options, signal })) as T
     } catch (error) {
       if (error instanceof ApiError) throw new FinanceError(describeDetail(error.detail), error.status)
-      if (error instanceof Error && error.name === 'AbortError') throw error
+      // A caller's own cancellation travels untouched; our own deadline becomes a sentence that names the wait,
+      // because `AbortSignal.timeout()` rejects as TimeoutError and would otherwise read as an unreachable service.
+      if (options.signal?.aborted === true) throw error
+      if (error instanceof Error && (error.name === 'AbortError' || error.name === 'TimeoutError')) {
+        throw new FinanceError(`the finance service did not answer within ${String(timeout)} ms`, 504)
+      }
       throw new FinanceError(`cannot reach the finance service at ${settings.baseUrl}`)
     }
   }

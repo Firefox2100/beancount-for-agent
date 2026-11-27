@@ -1666,6 +1666,14 @@
             "title": "Points",
             "type": "array"
           },
+          "rates": {
+            "additionalProperties": {
+              "type": "string"
+            },
+            "description": "What one unit of each held currency is worth in the base currency, as valued today. Empty when the provider gave nothing.",
+            "title": "Rates",
+            "type": "object"
+          },
           "valuation": {
             "$ref": "#/components/schemas/ReferenceRateStatus"
           }
@@ -8175,6 +8183,15 @@
       "post": {
         "operationId": "refresh_reference_rates_ledgers__ledger_id__reference_rates_refresh_post",
         "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
           {
             "in": "header",
             "name": "X-Actor",

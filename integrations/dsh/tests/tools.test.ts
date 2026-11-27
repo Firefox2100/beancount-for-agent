@@ -2,7 +2,7 @@ import type { Agent } from '@deepseek-ai/dsh-agent'
 import { afterEach, describe, expect, it } from 'vitest'
 import { Finance } from '../src/finance.ts'
 import { defaultLedgerState } from '../src/state.ts'
-import { financeTools } from '../src/tools.ts'
+import { CATALOGUE, financeTools } from '../src/tools.ts'
 import type { BeancountView, StateRecord } from '../src/types.ts'
 import { stubService } from './helpers.ts'
 
@@ -121,5 +121,13 @@ describe('the finance tools', () => {
     await run('finance_delete', { id: 'abc', note: 'duplicate' })
     expect(JSON.parse(service?.requests[0]?.body ?? '{}')).toEqual({ ledger: 'personal', date: '2026-11-25' })
     expect(JSON.parse(service?.requests[1]?.body ?? '{}')).toEqual({ ledger: 'personal', note: 'duplicate' })
+  })
+
+  it('list exactly the tools it registers, group by group', async () => {
+    const { tools } = await setup({})
+    const registered = (group: string) => tools.filter(item => item.group === group).map(item => item.definition.name).sort()
+    expect([...CATALOGUE.core].sort()).toEqual(registered('core'))
+    expect([...CATALOGUE.record].sort()).toEqual(registered('record'))
+    expect([...CATALOGUE.analysis].sort()).toEqual(registered('analysis'))
   })
 })

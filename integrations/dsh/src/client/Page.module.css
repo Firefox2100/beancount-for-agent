@@ -1,4 +1,6 @@
-.page { display: flex; flex-direction: column; gap: 12px; padding: 12px; color: var(--dsw-alias-label-primary); font-size: var(--dsh-content-font-size, 13px); min-width: 0; }
+/* The dock's tab body is a fixed-height column with `overflow: hidden`, so the page itself carries the scroll:
+   without this the accounts list pushes everything below it (the tool groups) out of reach. */
+.page { display: flex; flex-direction: column; gap: 12px; padding: 12px; color: var(--dsw-alias-label-primary); font-size: var(--dsh-content-font-size, 13px); min-width: 0; flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; box-sizing: border-box; }
 .bar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .tabs { display: flex; gap: 4px; flex: 1 1 auto; }
 .tab { border: 0; background: transparent; color: var(--dsw-alias-label-secondary); font: inherit; padding: 4px 10px; border-radius: var(--dsw-radius-sm); cursor: pointer; }
@@ -78,6 +80,17 @@
 .disclosure { color: var(--dsw-alias-label-secondary); font-size: 12px; }
 .disclosure summary { padding: 4px 0; cursor: pointer; }
 .disclosure > div { padding: 6px 0 0 14px; }
+.toolNames { margin: 0 0 6px; font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11px; line-height: 16px; color: var(--dsw-alias-label-tertiary); overflow-wrap: anywhere; }
+/* A root account is one collapsed line until the reader opens it; the summary carries the group's total. */
+.accountGroup { border-bottom: 1px solid var(--dsw-alias-border-l1); padding: 2px 0; }
+.accountGroup:last-child { border-bottom: 0; }
+.accountSummary { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; padding: 5px 0; cursor: pointer; }
+.accountSummary::marker { color: var(--dsw-alias-label-tertiary); }
+.accountSummary > span:first-child { font-weight: 600; overflow-wrap: anywhere; }
+.accountSummary .amount { color: var(--dsw-alias-label-primary); }
+.accountGroup > .row:first-of-type { margin-top: 2px; }
+.accountGroup .row { padding-left: 14px; border-bottom: 0; }
+.accountGroup .row:hover { background: var(--dsw-alias-bg-layer-1); }
 @media (max-width: 330px) {
   .summary { grid-template-columns: 1fr; }
   .allocationLayout { grid-template-columns: 1fr; }

@@ -23,6 +23,17 @@ export interface GroupedTool {
   definition: ToolDefinition
 }
 
+/**
+ * The names in each group, in registration order. The dock page lists them under the group switches: a group that is
+ * off still says what turning it on adds, instead of expanding to an empty box. `tests/tools.test.ts` compares this
+ * with what `financeTools` actually registers.
+ */
+export const CATALOGUE: Record<'core' | Group, readonly string[]> = {
+  core: ['finance_ledgers', 'finance_use_ledger', 'finance_create_ledger', 'finance_accounts', 'finance_balances', 'finance_transactions', 'finance_proposals'],
+  record: ['finance_expense', 'finance_income', 'finance_transfer', 'finance_reconcile', 'finance_recipes', 'finance_recipe', 'finance_open_account', 'finance_close_account', 'finance_amend', 'finance_delete', 'finance_withdraw'],
+  analysis: ['finance_position', 'finance_open_items', 'finance_due', 'finance_credit_pools'],
+}
+
 const WAITING = 'It is waiting for the user to approve it; nothing is recorded until then. Tell the user what you proposed.'
 
 /** Drop what was not given, so the service applies its own defaults. */

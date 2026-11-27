@@ -98,3 +98,8 @@ class FinancialPosition(BaseModel):
     points: list[PositionPoint]
     allocation: list[AllocationItem]
     valuation: ReferenceRateStatus
+    rates: dict[str, str] = Field(
+        default_factory=dict,
+        description="What one unit of each held currency is worth in the base currency, as valued today. "
+        "Empty when the provider gave nothing.",
+    )

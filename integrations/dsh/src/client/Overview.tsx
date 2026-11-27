@@ -1,6 +1,6 @@
 import { useId } from 'react'
 import type { Group } from '../types.ts'
-import type { Interval, OverviewData, PositionTotal, ReferenceRateStatus } from './api.ts'
+import type { FinancialPosition, Interval, OverviewData, PositionTotal, ReferenceRateStatus } from './api.ts'
 import { AllocationChart, PositionChart } from './Charts.tsx'
 import type { BeancountKey } from './locales.ts'
 import css from './Page.module.css'
@@ -24,6 +24,9 @@ export interface OverviewProps {
   data: OverviewData | null
   error: string | null
   busy: boolean
+  /** The valuation arrives on its own request, after the accounts, so it is passed separately. */
+  position: FinancialPosition | null
+  problem: string | null
   onLedger(ledger: string): void
   onGroup(group: Group, enabled: boolean): void
   onRefresh(): void
@@ -35,7 +38,24 @@ export interface OverviewProps {
 const amounts = (values: Record<string, string>): string => Object.entries(values).map(([currency, value]) => `${value} ${currency}`).join(' · ')
 const total = (item: PositionTotal | undefined): string => item?.reference_value == null ? '—' : `${item.reference_value.number} ${item.reference_value.currency}`
 
-export function Overview({ t, data, error, busy, onLedger, onGroup, onRefresh, onRefreshRates, interval, onInterval }: OverviewProps) {
+/** A total is only convertible when every currency in it has a price today. */
+const convertible = (held: Record<string, number>, position: FinancialPosition | null): boolean =>
+  position !== null && Object.keys(held).every(currency => currency === position.base_currency || position.rates?.[currency] !== undefined)
+
+/** One line for a whole root account: the base-currency total when every currency has a rate, else each currency. */
+function summaryOf(held: Record<string, number>, position: FinancialPosition | null): string {
+  if (convertible(held, position) && position !== null) {
+    const base = position.base_currency
+    const value = Object.entries(held).reduce((sum, [currency, number]) => {
+      const rate = currency === base ? 1 : Number(position.rates?.[currency] ?? 0)
+      return sum + number * rate
+    }, 0)
+    return `≈ ${value.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${base}`
+  }
+  return Object.entries(held).map(([currency, number]) => `${number.toLocaleString(undefined, { maximumFractionDigits: 2 })} ${currency}`).join(' · ') || '—'
+}
+
+export function Overview({ t, data, error, busy, position, problem, onLedger, onGroup, onRefresh, onRefreshRates, interval, onInterval }: OverviewProps) {
   const page = useId()
   const balances = new Map((data?.balances ?? []).map(item => [item.account, item.balances]))
   const chosen = data?.state.ledger ?? data?.active ?? ''
@@ -56,12 +76,14 @@ export function Overview({ t, data, error, busy, onLedger, onGroup, onRefresh, o
       {error !== null && <div className={`${css.notice} ${css.error}`} role="alert">{t('unreachable', { message: error })}<div className={css.muted}>{t('openSettings')}</div></div>}
       {data !== null && data.ledgers.length === 0 && error === null && <p className={css.muted}>{t('noLedgers')}</p>}
 
-      {data?.position !== null && data?.position !== undefined && (() => {
-        const latest = data.position.points.at(-1)
+      {problem !== null && <p className={css.notice} role="status">{t('positionUnavailable', { message: problem })}</p>}
+
+      {position !== null && (() => {
+        const latest = position.points.at(-1)
         return <>
           <section className={css.sectionBlock} aria-labelledby={`${page}-position`}>
             <div className={css.sectionHead}>
-              <div><h2 id={`${page}-position`} className={css.sectionTitle}>{t('financialPosition')}</h2><p className={css.muted}>{t('referenceIn', { currency: data.position.base_currency })}</p></div>
+              <div><h2 id={`${page}-position`} className={css.sectionTitle}>{t('financialPosition')}</h2><p className={css.muted}>{t('referenceIn', { currency: position.base_currency })}</p></div>
               <div className={css.segmented} aria-label={t('period')}>
                 <button type="button" aria-pressed={interval === 'week'} onClick={() => { onInterval('week') }}>{t('weekly')}</button>
                 <button type="button" aria-pressed={interval === 'month'} onClick={() => { onInterval('month') }}>{t('monthly')}</button>
@@ -72,13 +94,13 @@ export function Overview({ t, data, error, busy, onLedger, onGroup, onRefresh, o
               <div><span>{t('liabilities')}</span><strong>{total(latest?.liabilities)}</strong></div>
               <div><span>{t('netPosition')}</span><strong>{total(latest?.net)}</strong></div>
             </div>
-            <PositionChart points={data.position.points} t={t} />
+            <PositionChart points={position.points} t={t} />
             <p className={css.rateNote}>
-              <span>{t('approximateValues')} · {t(RATE_STATE[data.position.valuation.state])}{data.position.valuation.observed_on == null ? '' : ` · ${data.position.valuation.observed_on}`}</span>
+              <span>{t('approximateValues')} · {t(RATE_STATE[position.valuation.state])}{position.valuation.observed_on == null ? '' : ` · ${position.valuation.observed_on}`}{position.valuation.message == null ? '' : ` · ${position.valuation.message}`}</span>
               <button type="button" className={css.linkButton} disabled={busy} onClick={onRefreshRates}>{t('refreshRates')}</button>
             </p>
           </section>
-          {data.position.allocation.length > 0 && <section className={css.sectionBlock} aria-labelledby={`${page}-allocation`}><h2 id={`${page}-allocation`} className={css.sectionTitle}>{t('assetAllocation')}</h2><AllocationChart items={data.position.allocation} t={t} /></section>}
+          {position.allocation.length > 0 && <section className={css.sectionBlock} aria-labelledby={`${page}-allocation`}><h2 id={`${page}-allocation`} className={css.sectionTitle}>{t('assetAllocation')}</h2><AllocationChart items={position.allocation} t={t} /></section>}
         </>
       })()}
 
@@ -91,12 +113,20 @@ export function Overview({ t, data, error, busy, onLedger, onGroup, onRefresh, o
           {ROOTS.map((root) => {
             const rows = data.accounts.filter(account => account.name === root || account.name.startsWith(`${root}:`))
             if (rows.length === 0) return null
+            const held: Record<string, number> = {}
+            for (const account of rows) {
+              for (const [currency, value] of Object.entries(balances.get(account.name) ?? {})) {
+                held[currency] = (held[currency] ?? 0) + Number(value)
+              }
+            }
             return (
-              <div key={root} className={css.group}>
-                <div className={css.muted}>{root}</div>
+              <details key={root} className={css.accountGroup}>
+                <summary className={css.accountSummary}>
+                  <span>{root}<span className={css.muted}> · {rows.length}</span></span>
+                  <span className={css.amount} title={convertible(held, position) ? t('approximateValues') : undefined}>{summaryOf(held, position)}</span>
+                </summary>
                 {rows.map((account) => {
-                  const held = balances.get(account.name) ?? {}
-                  const amounts = Object.entries(held).map(([currency, number]) => `${number} ${currency}`).join('\n')
+                  const amounts = Object.entries(balances.get(account.name) ?? {}).map(([currency, number]) => `${number} ${currency}`).join('\n')
                   const bank = account.details.bank_name
                   return (
                     <div key={account.name} className={css.row}>
@@ -108,13 +138,25 @@ export function Overview({ t, data, error, busy, onLedger, onGroup, onRefresh, o
                     </div>
                   )
                 })}
-              </div>
+              </details>
             )
           })}
         </div>
       )}
 
-      {groups !== undefined && <details className={css.disclosure}><summary>{t('tools')}</summary><div className={css.group}><label className={css.inline}><input type="checkbox" checked={groups.record} disabled={busy} onChange={(event) => { onGroup('record', event.target.checked) }} />{t('toolRecord')}</label><label className={css.inline}><input type="checkbox" checked={groups.analysis} disabled={busy} onChange={(event) => { onGroup('analysis', event.target.checked) }} />{t('toolAnalysis')}</label></div></details>}
+      {groups !== undefined && (
+        <details className={css.disclosure}>
+          <summary>{t('tools')}</summary>
+          <div className={css.group}>
+            <div className={css.muted}>{t('alwaysAvailable')}</div>
+            <p className={css.toolNames}>{(data?.tools?.core ?? []).join(' · ')}</p>
+            <label className={css.inline}><input type="checkbox" checked={groups.record} disabled={busy} onChange={(event) => { onGroup('record', event.target.checked) }} />{t('toolRecord')}</label>
+            <p className={css.toolNames}>{(data?.tools?.record ?? []).join(' · ')}</p>
+            <label className={css.inline}><input type="checkbox" checked={groups.analysis} disabled={busy} onChange={(event) => { onGroup('analysis', event.target.checked) }} />{t('toolAnalysis')}</label>
+            <p className={css.toolNames}>{(data?.tools?.analysis ?? []).join(' · ')}</p>
+          </div>
+        </details>
+      )}
     </div>
   )
 }

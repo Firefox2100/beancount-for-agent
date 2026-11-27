@@ -57,7 +57,6 @@ describe('dock routes', () => {
       'GET /agent/ledgers': { body: [{ id: 'personal', version: 'v' }] },
       'GET /ledgers/personal/accounts': { body: [{ name: 'Assets:Bank', details: { account_number: '12345678' } }, { name: 'Assets:Gone', close_date: '2026-01-01', details: {} }] },
       'GET /ledgers/personal/balances': { body: [{ account: 'Assets:Bank', balances: { GBP: '1' } }] },
-      'GET /ledgers/personal/financial-position': { body: position },
       'GET /ledgers/personal/due': { body: [] },
     })
     const result = await call('/overview?session=s1')
@@ -65,10 +64,46 @@ describe('dock routes', () => {
     expect(result.body.active).toBe('personal')
     expect(result.body.accounts.map((a: { name: string }) => a.name)).toEqual(['Assets:Bank'])
     expect(result.body.accounts[0].details.account_number).toBe('12345678')
-    expect(result.body.position.points[0].net.reference_value.number).toBe('80.00')
-    expect(service?.requests.find(request => request.path.endsWith('/financial-position'))?.query).toBe('?interval=month&points=12')
+    // The valuation is not part of the overview: it has its own route so the accounts never wait for it.
+    expect(service?.requests.some(request => request.path.endsWith('/financial-position'))).toBe(false)
     expect(service?.requests.every(request => request.headers['x-actor'] === 'user')).toBe(true)
     expect(updates).toEqual([])
+  })
+
+  it('answer the valuation on its own route, with the interval it was asked for', async () => {
+    const { call } = await setup({
+      'GET /agent/ledgers': { body: [{ id: 'personal', version: 'v' }] },
+      'GET /ledgers/personal/financial-position': { body: position },
+    })
+    const result = await call('/position?session=s1&interval=week')
+    expect(result.status).toBe(200)
+    expect(result.body.ledger).toBe('personal')
+    expect(result.body.problem).toBeNull()
+    expect(result.body.position.points[0].net.reference_value.number).toBe('80.00')
+    expect(service?.requests.find(request => request.path.endsWith('/financial-position'))?.query).toBe('?interval=week&points=12')
+  })
+
+  it('carry the reason the valuation failed instead of failing the page', async () => {
+    const { call } = await setup({
+      'GET /agent/ledgers': { body: [{ id: 'personal', version: 'v' }] },
+      'GET /ledgers/personal/financial-position': { status: 400, body: { detail: 'the ledger needs an operating currency for reference valuations' } },
+    })
+    const result = await call('/position?session=s1')
+    expect(result.status).toBe(200)
+    expect(result.body.position).toBeNull()
+    expect(result.body.problem).toContain('operating currency')
+  })
+
+  it('list the tools it registers in the overview payload', async () => {
+    const { call } = await setup({
+      'GET /agent/ledgers': { body: [{ id: 'personal', version: 'v' }] },
+      'GET /ledgers/personal/accounts': { body: [] },
+      'GET /ledgers/personal/balances': { body: [] },
+      'GET /ledgers/personal/due': { body: [] },
+    })
+    const result = await call('/overview?session=s1')
+    expect(result.body.tools.record).toContain('finance_expense')
+    expect(result.body.tools.analysis).toContain('finance_position')
   })
 
   it('show an overview even when the service is down', async () => {

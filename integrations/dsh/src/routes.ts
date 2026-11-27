@@ -8,7 +8,11 @@ import { describeChange } from '@beancount-mcp/client'
 import { FinanceError, type Finance } from './finance.ts'
 import type { AccountInfo, Balance, Change, DueItem, FinancialPosition, LedgerInfo } from './format.ts'
 import { isGroup } from './state.ts'
+import { CATALOGUE } from './tools.ts'
 import type { BeancountView, StateRecord } from './types.ts'
+
+/** The valuation may walk a year of points and ask the rate provider once; it gets longer than a plain request. */
+const POSITION_TIMEOUT_MS = 60_000
 
 export interface SessionHandle {
   state(): BeancountView
@@ -88,23 +92,42 @@ export function createRoutes(deps: RouteDeps): Route[] {
       const interval = url.searchParams.get('interval') ?? 'month'
       if (interval !== 'week' && interval !== 'month') throw new BadRequest('interval must be week or month')
       const state = handle.state()
+      const tools = CATALOGUE
       let ledgers: LedgerInfo[]
       try {
         ledgers = await finance.user<LedgerInfo[]>('GET', '/agent/ledgers')
       } catch (error) {
-        return json({ state, service: error instanceof Error ? error.message : String(error), ledgers: [], accounts: [], balances: [], position: null, due: [] })
+        return json({ state, service: error instanceof Error ? error.message : String(error), ledgers: [], accounts: [], balances: [], due: [], tools })
       }
       const active = state.ledger ?? (ledgers.length === 1 ? ledgers[0]?.id ?? null : null)
-      if (active === null) return json({ state, service: 'ok', ledgers, active, accounts: [], balances: [], position: null, due: [] })
-      // The reference valuations need an operating currency and a reachable rate provider, and a service older than
-      // this route answers 404. Neither may cost the page its accounts and balances, so those two stay required only.
-      const [accounts, balances, position, due] = await Promise.all([
+      if (active === null) return json({ state, service: 'ok', ledgers, active, accounts: [], balances: [], due: [], tools })
+      // The valuation lives on its own route: it walks every point and may ask the rate provider, so the page asks
+      // for it separately and the accounts never wait for it.
+      const [accounts, balances, due] = await Promise.all([
         finance.user<AccountInfo[]>('GET', `/ledgers/${id(active)}/accounts`),
         finance.user<Balance[]>('GET', `/ledgers/${id(active)}/balances`),
-        finance.user<FinancialPosition>('GET', `/ledgers/${id(active)}/financial-position`, { query: { interval, points: 12 } }).catch(() => null),
-        finance.user<DueItem[]>('GET', `/ledgers/${id(active)}/due`, { query: { within_days: 30 } }).catch(() => []),
+        finance.user<DueItem[]>('GET', `/ledgers/${id(active)}/due`, { query: { within_days: 30 } }).catch(() => [] as DueItem[]),
       ])
-      return json({ state, service: 'ok', ledgers, active, accounts: accounts.filter(account => !account.close_date), balances, position, due })
+      return json({ state, service: 'ok', ledgers, active, accounts: accounts.filter(account => !account.close_date), balances, due, tools })
+    }),
+
+    route('/position', ['GET'], async (request) => {
+      const url = new URL(request.url)
+      const handle = sessionOf(url.searchParams.get('session'))
+      const interval = url.searchParams.get('interval') ?? 'month'
+      if (interval !== 'week' && interval !== 'month') throw new BadRequest('interval must be week or month')
+      const state = handle.state()
+      const ledgers = await finance.user<LedgerInfo[]>('GET', '/agent/ledgers')
+      const active = state.ledger ?? (ledgers.length === 1 ? ledgers[0]?.id ?? null : null)
+      if (active === null) return json({ ledger: null, position: null, problem: null })
+      // A service older than this route answers 404, a ledger without an operating currency answers 422 and a slow
+      // rate provider answers late: each of them travels to the page as a sentence instead of an empty panel.
+      try {
+        const position = await finance.user<FinancialPosition>('GET', `/ledgers/${id(active)}/financial-position`, { query: { interval, points: 12 }, timeoutMs: POSITION_TIMEOUT_MS })
+        return json({ ledger: active, position, problem: null })
+      } catch (error) {
+        return json({ ledger: active, position: null, problem: error instanceof Error ? error.message : String(error) })
+      }
     }),
 
     route('/ledger', ['POST'], async (request) => {

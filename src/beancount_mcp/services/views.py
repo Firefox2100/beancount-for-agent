@@ -12,7 +12,7 @@ from beancount_mcp.models.views import (
     AllocationItem, DueItem, FinancialPosition, OpenItems, PoolStatus, PositionPoint,
     PositionTotal, ReferenceRateStatus, ReferenceValue,
 )
-from beancount_mcp.services.reference_rates import ReferenceRateService
+from beancount_mcp.services.reference_rates import RateResult, ReferenceRateService
 
 
 class ViewService:
@@ -39,8 +39,11 @@ class ViewService:
     async def reference_rate_status(self) -> ReferenceRateStatus:
         return await asyncio.to_thread(self._rates.status)
 
-    async def refresh_reference_rates(self) -> ReferenceRateStatus:
-        return await asyncio.to_thread(self._rates.refresh)
+    async def refresh_reference_rates(self, ledger_id: str) -> ReferenceRateStatus:
+        """Throw the cache away and price the ledger again, so one click has something to show for itself."""
+        await asyncio.to_thread(self._rates.refresh)
+        position = await self.financial_position(ledger_id, "month", 12)
+        return position.valuation
 
     def _open_items(self, ledger_id: str, account: str | None) -> list[OpenItems]:
         ledger = self._store.open(ledger_id)
@@ -78,15 +81,21 @@ class ViewService:
             holdings.append((date, held_assets, held_liabilities))
             quotes |= held_assets.keys() | held_liabilities.keys()
         rate_rows = self._rates.rates_for(base, quotes, dates)
+        # A month that has not ended yet is a point like any other, and a provider that has no row for a weekend or a
+        # holiday still leaves the day valued: the last known rates stand in, and the point says so.
+        rate_rows, inherited = _carried_forward(rate_rows, quotes - {base})
         position_points: list[PositionPoint] = []
         for date, held_assets, held_liabilities in holdings:
             priced = rate_rows[date]
+            valuation = priced.status
+            if date in inherited:
+                valuation = _inherited(valuation, sorted(priced.rates), inherited[date])
             position_points.append(PositionPoint(
                 date=date,
                 assets=_position_total(held_assets, base, priced.rates),
                 liabilities=_position_total(held_liabilities, base, priced.rates),
                 net=_position_total(_subtract(held_assets, held_liabilities), base, priced.rates),
-                valuation=priced.status,
+                valuation=valuation,
             ))
 
         current = ledger.balances(today)
@@ -114,7 +123,40 @@ class ViewService:
         return FinancialPosition(
             ledger=ledger_id, ledger_version=ledger.version(), interval=interval, base_currency=base,
             points=position_points, allocation=allocation, valuation=status,
+            rates={currency: format(rate, "f") for currency, rate in sorted(today_rates.rates.items())},
         )
+
+
+def _carried_forward(rate_rows: dict[dt.date, RateResult], needed: set[str]) -> tuple[dict[dt.date, RateResult], dict[dt.date, dt.date]]:
+    """Give every day the rates of the last day that had them, so an unfinished month still has a value."""
+    merged: dict[str, Decimal] = {}
+    filled: dict[dt.date, RateResult] = {}
+    inherited: dict[dt.date, dt.date] = {}
+    previous: dt.date | None = None
+    for date in sorted(rate_rows):
+        result = rate_rows[date]
+        if not result.rates:
+            complete = previous is not None and not (needed - set(merged))
+            filled[date] = RateResult(dict(merged), result.status) if complete else result
+            if complete:
+                inherited[date] = previous
+            continue
+        merged.update(result.rates)
+        complete = not (needed - set(merged))
+        filled[date] = RateResult(dict(merged), result.status) if complete else result
+        if complete and set(result.rates) != set(merged):
+            inherited[date] = previous if previous is not None else date
+        previous = date
+    return filled, inherited
+
+
+def _inherited(status: ReferenceRateStatus, covered: list[str], source: dt.date) -> ReferenceRateStatus:
+    return ReferenceRateStatus(
+        provider=status.provider, enabled=status.enabled, base_currency=status.base_currency,
+        observed_on=status.observed_on, fetched_at=status.fetched_at, state="stale",
+        covered_currencies=covered, missing_currencies=[],
+        message=f"carried forward from {source.isoformat()}",
+    )
 
 
 def _point_dates(today: dt.date, interval: str, count: int) -> list[dt.date]:

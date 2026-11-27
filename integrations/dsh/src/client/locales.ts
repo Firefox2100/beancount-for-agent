@@ -65,6 +65,8 @@ export const en = {
   save: 'Save',
   saving: 'Saving…',
   discard: 'Discard changes',
+  alwaysAvailable: 'Always on',
+  positionUnavailable: 'Reference values are unavailable: {message}',
 } as const
 
 export type BeancountKey = keyof typeof en
@@ -131,6 +133,8 @@ export const zh: Record<BeancountKey, string> = {
   save: '保存',
   saving: '保存中…',
   discard: '放弃修改',
+  alwaysAvailable: '始终可用',
+  positionUnavailable: '参考值暂不可用：{message}',
 }
 
 export const ja: Record<BeancountKey, string> = {
@@ -195,6 +199,8 @@ export const ja: Record<BeancountKey, string> = {
   save: '保存',
   saving: '保存しています…',
   discard: '変更を破棄',
+  alwaysAvailable: '常時利用',
+  positionUnavailable: '参考値を利用できません：{message}',
 }
 
 export const es: Record<BeancountKey, string> = {
@@ -259,6 +265,8 @@ export const es: Record<BeancountKey, string> = {
   save: 'Guardar',
   saving: 'Guardando…',
   discard: 'Descartar cambios',
+  alwaysAvailable: 'Siempre disponible',
+  positionUnavailable: 'Los valores de referencia no están disponibles: {message}',
 }
 
 export const fr: Record<BeancountKey, string> = {
@@ -323,6 +331,8 @@ export const fr: Record<BeancountKey, string> = {
   save: 'Enregistrer',
   saving: 'Enregistrement…',
   discard: 'Abandonner les modifications',
+  alwaysAvailable: 'Toujours disponible',
+  positionUnavailable: 'Les valeurs de référence ne sont pas disponibles : {message}',
 }
 
 export const de: Record<BeancountKey, string> = {
@@ -387,6 +397,8 @@ export const de: Record<BeancountKey, string> = {
   save: 'Speichern',
   saving: 'Wird gespeichert…',
   discard: 'Änderungen verwerfen',
+  alwaysAvailable: 'Immer verfügbar',
+  positionUnavailable: 'Referenzwerte sind nicht verfügbar: {message}',
 }
 
 export const ru: Record<BeancountKey, string> = {
@@ -451,6 +463,8 @@ export const ru: Record<BeancountKey, string> = {
   save: 'Сохранить',
   saving: 'Сохранение…',
   discard: 'Отменить изменения',
+  alwaysAvailable: 'Доступно всегда',
+  positionUnavailable: 'Справочные значения недоступны: {message}',
 }
 
 export const pt: Record<BeancountKey, string> = {
@@ -515,4 +529,6 @@ export const pt: Record<BeancountKey, string> = {
   save: 'Guardar',
   saving: 'A guardar…',
   discard: 'Descartar alterações',
+  alwaysAvailable: 'Sempre disponível',
+  positionUnavailable: 'Os valores de referência não estão disponíveis: {message}',
 }

@@ -48,7 +48,7 @@ async def reference_rate_status(service: ViewServiceDep) -> ReferenceRateStatus:
 
 
 @router.post("/reference-rates/refresh")
-async def refresh_reference_rates(service: ViewServiceDep, caller: CallerDep) -> ReferenceRateStatus:
+async def refresh_reference_rates(ledger_id: str, service: ViewServiceDep, caller: CallerDep) -> ReferenceRateStatus:
     if caller.actor == "agent":
         raise ApprovalRequired("reference rates are refreshed by the user")
-    return await service.refresh_reference_rates()
+    return await service.refresh_reference_rates(ledger_id)

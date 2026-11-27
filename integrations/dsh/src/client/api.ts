@@ -15,8 +15,17 @@ export interface OverviewData {
   active: string | null
   accounts: AccountRow[]
   balances: { account: string; balances: Record<string, string> }[]
-  position: FinancialPosition | null
   due: DueItem[]
+  /** The tool names each group switches on, so the page can say what a group holds before it is turned on. */
+  tools?: Record<'core' | 'record' | 'analysis', string[]>
+}
+
+/** The valuation on its own request: it is slow, and the accounts must not wait for it. */
+export interface PositionData {
+  ledger: string | null
+  position: FinancialPosition | null
+  /** Why the valuation is missing, when it is: the page says so rather than leaving the section out. */
+  problem: string | null
 }
 
 export type Interval = 'week' | 'month'
@@ -54,6 +63,8 @@ export interface FinancialPosition {
   points: PositionPoint[]
   allocation: AllocationItem[]
   valuation: ReferenceRateStatus
+  /** What one unit of each held currency is worth in the base currency, as valued today. */
+  rates?: Record<string, string>
 }
 export interface DueItem {
   account: string
