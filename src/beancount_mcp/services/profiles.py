@@ -1,13 +1,16 @@
 import asyncio
 
 from beancount_mcp.ledger.engine import Ledger
-from beancount_mcp.ledger.errors import ApprovalRequired
+from beancount_mcp.ledger import profile_items
+from beancount_mcp.ledger.errors import ApprovalRequired, RecipeError
 from beancount_mcp.ledger.profile import ProfileStore
 from beancount_mcp.ledger.store import LedgerStore
 from beancount_mcp.models import Caller, Profile, ProfileView
 from beancount_mcp.models.budgets import Budget
 from beancount_mcp.models.goals import Goal
 from beancount_mcp.models.recurring import Recurring
+from beancount_mcp.models.declarative import RecipeDefinition
+from beancount_mcp.recipes import declarative
 from beancount_mcp.recipes.registry import RecipeRegistry
 
 
@@ -55,6 +58,23 @@ class ProfileService:
             if budget is not None:
                 budgets[bid] = budget
             store.save(profile.model_copy(update={"budgets": budgets}), version)
+            return self._view(ledger_id)
+
+        return await asyncio.to_thread(run)
+
+    async def set_recipe(self, ledger_id: str, rid: str, definition: RecipeDefinition | None, caller: Caller) -> ProfileView:
+        """Add, replace or (with `None`) remove one recipe defined as data. For users only: it changes what agents can do."""
+        if caller.actor == "agent":
+            raise ApprovalRequired("recipes are defined by the user")
+        if definition is not None:
+            found = declarative.problems(definition, {r.id for r in self._registry.all()}, rid)
+            if found:
+                raise RecipeError(f"recipe {rid} cannot be saved: " + "; ".join(found))
+
+        def run() -> ProfileView:
+            store = ProfileStore(self._store.open(ledger_id).root)
+            profile, version = store.load()
+            store.save(profile_items.apply(profile, "recipe", rid, definition), version)
             return self._view(ledger_id)
 
         return await asyncio.to_thread(run)
@@ -113,6 +133,12 @@ class ProfileService:
         for bid, budget in profile.budgets.items():
             if not any(name == budget.account or name.startswith(budget.account + ":") for name in open_accounts):
                 warnings.append(f"budget {bid}: no open account under {budget.account}")
+        for rid, definition in profile.recipes.items():
+            for message in declarative.problems(definition, {r.id for r in self._registry.all()}, rid):
+                warnings.append(f"recipe {rid}: {message}")
+            for posting in definition.postings:
+                if posting.account.startswith(("Assets", "Liabilities", "Equity", "Income", "Expenses")) and posting.account not in open_accounts:
+                    warnings.append(f"recipe {rid}: {posting.account} is not open")
         for gid, goal in profile.goals.items():
             for name in goal.accounts:
                 if not any(open_name == name or open_name.startswith(name + ":") for open_name in open_accounts):

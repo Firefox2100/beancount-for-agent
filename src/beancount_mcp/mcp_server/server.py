@@ -24,6 +24,7 @@ from beancount_mcp.models import (
     CreateLedgerRequest,
     KindInfo,
     LedgerInfo,
+    Operation,
     PendingChange,
     RecipeInfo,
     Transaction,
@@ -32,6 +33,7 @@ from beancount_mcp.models import (
 from beancount_mcp.models.common import Rate
 from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, PoolStatus
 from beancount_mcp.models.imports import ImportReview, ImportSummary
+from beancount_mcp.models.declarative import RecipeDefinition
 from beancount_mcp.models.receipts import ReceiptReading
 from beancount_mcp.models.recurring import RecurringStatus, RecurringSuggestion
 from beancount_mcp.models.budgets import BudgetStatus, BudgetSuggestion
@@ -52,7 +54,7 @@ for everyday events, and use list_recipes then perform_recipe for anything accou
 such as card statements, loan repayments, reimbursements or trades. Amounts can be written
 like "12.50 USD", or as a formula such as "18.65 + 6.60 + 7.40 GBP" (use + - * / and brackets):
 the service works it out exactly, so never add up or convert numbers yourself. A `rate` can be
-a formula too, such as 1 / 8.73. get_goals shows savings goals and get_checks things in the books worth a look. get_budgets shows how spending is going against the user's budgets, so use it before saying something is affordable. get_income_statement answers questions about spending and income over a period. get_recurring shows rent, subscriptions and other regular payments that are overdue or coming up, and record_recurring records one. When the user has uploaded a bank statement, list_imports and
+a formula too, such as 1 / 8.73. get_setup, preview_recipe and propose_setup let you draft a recipe, recurring item, budget or goal for the user to approve. get_goals shows savings goals and get_checks things in the books worth a look. get_budgets shows how spending is going against the user's budgets, so use it before saying something is affordable. get_income_statement answers questions about spending and income over a period. get_recurring shows rent, subscriptions and other regular payments that are overdue or coming up, and record_recurring records one. When the user has uploaded a bank statement, list_imports and
 get_import show its numbered lines and propose_import proposes them, with an account for each. The `ledger` argument can be left out when only one ledger exists.
 """
 
@@ -307,6 +309,30 @@ def create_mcp(agent: AgentService, raw_transactions: bool = False, receipts: Re
     ) -> IncomeStatement:
         """What came in and what went out over a period, by account. Use this for questions about spending, income and saving instead of adding up transactions."""
         return await agent.income_statement(ledger, start, end, account, None, interval, compare)
+
+    @tool("read", read_only=True)
+    async def get_setup(item: Literal["recipe", "recurring", "budget", "goal"], ledger: Ledger = None) -> dict:
+        """What can be set up of one kind (recipe, recurring, budget, goal): the schema of an item and the items there now. Use it before propose_setup."""
+        return await agent.setup(ledger, item)
+
+    @tool("read", read_only=True)
+    async def preview_recipe(
+        id: str, definition: RecipeDefinition, account: str, params: dict[str, Any] = {}, ledger: Ledger = None
+    ) -> Operation:
+        """Try a recipe you drafted: the transaction it would record for these parameters on this account. Nothing is saved. Test a draft before proposing it."""
+        return await agent.preview_recipe(ledger, id, definition, account, params)
+
+    @tool("propose")
+    async def propose_setup(
+        item: Annotated[Literal["recipe", "recurring", "budget", "goal"], Field(description="What kind of thing.")],
+        id: str,
+        value: Annotated[dict[str, Any] | None, Field(description="The item as get_setup's schema describes it. Leave out to propose removing it.")] = None,
+        ledger: Ledger = None,
+        note: Note = None,
+        context: Context = None,
+    ) -> PendingChange:
+        """Propose a new or changed recipe, recurring item, budget or goal for the user to approve. It changes nothing until they do."""
+        return await agent.propose_setup(ledger, item, id, value, note, _caller(context), None)
 
     @tool("read", read_only=True)
     async def get_goals(ledger: Ledger = None) -> list[GoalStatus]:

@@ -1,12 +1,16 @@
 import asyncio
 
-from beancount_mcp.ledger import receipts
+from types import SimpleNamespace
+
+from beancount_mcp.ledger import profile_items, receipts
+from beancount_mcp.ledger.profile import ProfileStore
 from datetime import UTC, datetime
 
 from beancount_mcp.ledger.engine import Ledger
 from beancount_mcp.ledger.errors import (
     ChangeConflict,
     ChangeNotPending,
+    RecipeError,
     VersionRequired,
 )
 from beancount_mcp.ledger.pending import PendingStore
@@ -20,6 +24,7 @@ from beancount_mcp.models import (
     DeleteTransaction,
     Operation,
     PendingChange,
+    SetProfileItem,
     SubmitChangeRequest,
     UpdateDirective,
     UpdateTransaction,
@@ -88,8 +93,12 @@ class ChangeService:
         if request.receipts:
             operation = receipts.attach(operation, request.receipts, ledger.root)
         store = PendingStore(ledger.root)
+        profile_change = isinstance(operation, SetProfileItem)
+        if profile_change:
+            self._check_profile_item(operation)
         with ledger.lock:
-            auto_approve = caller.actor == "agent" and not self._agent_approval_required
+            # A profile item changes how the ledger is treated, so it always waits for a person.
+            auto_approve = caller.actor == "agent" and not self._agent_approval_required and not profile_change
             change = PendingChange(
                 id=store.new_id(),
                 ledger_id=ledger_id,
@@ -107,10 +116,19 @@ class ChangeService:
                 change.status = ChangeStatus.APPROVED
                 change.resolved_at = _now()
                 change.result_version = applied.version
-            else:
+            elif not profile_change:
                 ledger.apply(operation, expected_version, dry_run=True)
             store.save(change)
             return change
+
+    def _check_profile_item(self, operation: SetProfileItem) -> None:
+        """Refuse a change to the profile that could not be saved, so a person is never asked to approve it."""
+        try:
+            parsed = profile_items.parse(operation.item, operation.id, operation.value)
+        except ValueError as error:
+            raise RecipeError(str(error)) from None
+        if operation.item == "recipe" and parsed is not None:
+            self._actions.validate_definition(operation.id, parsed)
 
     def _operation_of(self, ledger_id: str, request: SubmitChangeRequest) -> tuple[Operation, ActionRequest | None]:
         if request.action is None:
@@ -124,7 +142,10 @@ class ChangeService:
         with ledger.lock:
             change = _require_pending(store.get(change_id))
             version = ledger.version()
-            ledger.apply(operation, version, dry_run=True)
+            if isinstance(operation, SetProfileItem):
+                self._check_profile_item(operation)
+            else:
+                ledger.apply(operation, version, dry_run=True)
             change.operation = operation
             change.base_version = version
             change.target_fingerprint = _fingerprint(ledger, operation)
@@ -138,7 +159,15 @@ class ChangeService:
             change = _require_pending(store.get(change_id))
             if _fingerprint(ledger, change.operation) != change.target_fingerprint:
                 raise ChangeConflict("the entry this change targets was modified or removed after it was proposed")
-            applied = ledger.apply(change.operation)
+            if isinstance(change.operation, SetProfileItem):
+                self._check_profile_item(change.operation)
+                store_ = ProfileStore(ledger.root)
+                profile, version = store_.load()
+                parsed = profile_items.parse(change.operation.item, change.operation.id, change.operation.value)
+                store_.save(profile_items.apply(profile, change.operation.item, change.operation.id, parsed), version)
+                applied = SimpleNamespace(version=ledger.version())
+            else:
+                applied = ledger.apply(change.operation)
             change.status = ChangeStatus.APPROVED
             change.resolved_at = _now()
             change.resolution_note = note

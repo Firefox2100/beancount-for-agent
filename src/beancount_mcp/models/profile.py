@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, StringConstraints
 
 from beancount_mcp.models.budgets import Budget, BudgetId
 from beancount_mcp.models.goals import Goal, GoalId
+from beancount_mcp.models.declarative import RecipeDefinition
 from beancount_mcp.models.common import AccountName, Amount, FiniteDecimal, Text
 from beancount_mcp.models.recurring import Recurring, RecurringId
 
@@ -42,6 +43,7 @@ class Profile(BaseModel):
     recurring: dict[RecurringId, Recurring] = Field(default_factory=dict)
     budgets: dict[BudgetId, Budget] = Field(default_factory=dict)
     goals: dict[GoalId, Goal] = Field(default_factory=dict)
+    recipes: dict[RecipeId, RecipeDefinition] = Field(default_factory=dict, description="Recipes defined as data, for this ledger.")
 
 
 class ProfileView(BaseModel):

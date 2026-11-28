@@ -12,6 +12,15 @@ class RecipeRegistry:
         self._recipes: dict[str, Recipe] = {}
         self._kinds: dict[str, str] = {}
 
+    def overlay(self, extra: Iterable[Recipe]) -> "RecipeRegistry":
+        """A copy with more recipes, for one ledger's own definitions. The built-in ones always win a clash."""
+        copy = RecipeRegistry()
+        copy._recipes = dict(self._recipes)
+        copy._kinds = dict(self._kinds)
+        for recipe in extra:
+            copy._recipes.setdefault(recipe.id, recipe)
+        return copy
+
     def describe_kind(self, name: str, description: str) -> None:
         """Document an account type. Types need no declaration to be used; this is for discovery."""
         self._kinds[name] = description

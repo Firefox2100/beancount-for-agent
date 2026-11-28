@@ -649,11 +649,13 @@
               "mapping": {
                 "balance": "#/components/schemas/BalanceAssertion-Input",
                 "commodity": "#/components/schemas/CommodityDirective",
+                "custom": "#/components/schemas/CustomDirective-Input",
                 "document": "#/components/schemas/DocumentDirective",
                 "event": "#/components/schemas/EventDirective",
                 "note": "#/components/schemas/NoteDirective",
                 "pad": "#/components/schemas/PadDirective",
-                "price": "#/components/schemas/PriceDirective-Input"
+                "price": "#/components/schemas/PriceDirective-Input",
+                "query": "#/components/schemas/QueryDirective"
               },
               "propertyName": "kind"
             },
@@ -675,6 +677,12 @@
               },
               {
                 "$ref": "#/components/schemas/DocumentDirective"
+              },
+              {
+                "$ref": "#/components/schemas/QueryDirective"
+              },
+              {
+                "$ref": "#/components/schemas/CustomDirective-Input"
               },
               {
                 "$ref": "#/components/schemas/EventDirective"
@@ -702,11 +710,13 @@
               "mapping": {
                 "balance": "#/components/schemas/BalanceAssertion-Output",
                 "commodity": "#/components/schemas/CommodityDirective",
+                "custom": "#/components/schemas/CustomDirective-Output",
                 "document": "#/components/schemas/DocumentDirective",
                 "event": "#/components/schemas/EventDirective",
                 "note": "#/components/schemas/NoteDirective",
                 "pad": "#/components/schemas/PadDirective",
-                "price": "#/components/schemas/PriceDirective-Output"
+                "price": "#/components/schemas/PriceDirective-Output",
+                "query": "#/components/schemas/QueryDirective"
               },
               "propertyName": "kind"
             },
@@ -728,6 +738,12 @@
               },
               {
                 "$ref": "#/components/schemas/DocumentDirective"
+              },
+              {
+                "$ref": "#/components/schemas/QueryDirective"
+              },
+              {
+                "$ref": "#/components/schemas/CustomDirective-Output"
               },
               {
                 "$ref": "#/components/schemas/EventDirective"
@@ -841,6 +857,8 @@
                 "open_account": "#/components/schemas/OpenAccount",
                 "reconcile": "#/components/schemas/Reconcile-Input",
                 "set_account_details": "#/components/schemas/SetAccountDetails",
+                "set_option": "#/components/schemas/SetOption",
+                "set_profile_item": "#/components/schemas/SetProfileItem",
                 "update_directive": "#/components/schemas/UpdateDirective-Input",
                 "update_transaction": "#/components/schemas/UpdateTransaction-Input"
               },
@@ -879,6 +897,12 @@
               },
               {
                 "$ref": "#/components/schemas/AttachReceipt"
+              },
+              {
+                "$ref": "#/components/schemas/SetOption"
+              },
+              {
+                "$ref": "#/components/schemas/SetProfileItem"
               },
               {
                 "$ref": "#/components/schemas/Batch-Input"
@@ -1827,6 +1851,293 @@
           "id"
         ],
         "title": "CreateLedgerRequest",
+        "type": "object"
+      },
+      "CustomAccount": {
+        "properties": {
+          "type": {
+            "const": "account",
+            "default": "account",
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "pattern": "^(Assets|Liabilities|Equity|Income|Expenses)(:[A-Z0-9][A-Za-z0-9-]*)+$",
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "CustomAccount",
+        "type": "object"
+      },
+      "CustomAmount-Input": {
+        "properties": {
+          "type": {
+            "const": "amount",
+            "default": "amount",
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/Amount-Input"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "CustomAmount",
+        "type": "object"
+      },
+      "CustomAmount-Output": {
+        "properties": {
+          "type": {
+            "const": "amount",
+            "default": "amount",
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "$ref": "#/components/schemas/Amount-Output"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "CustomAmount",
+        "type": "object"
+      },
+      "CustomBool": {
+        "properties": {
+          "type": {
+            "const": "bool",
+            "default": "bool",
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "CustomBool",
+        "type": "object"
+      },
+      "CustomDate": {
+        "properties": {
+          "type": {
+            "const": "date",
+            "default": "date",
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "format": "date",
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "CustomDate",
+        "type": "object"
+      },
+      "CustomDirective-Input": {
+        "description": "A `custom` entry: a named record with typed values, which other Beancount tools such as Fava read.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "const": "custom",
+            "default": "custom",
+            "title": "Kind",
+            "type": "string"
+          },
+          "type": {
+            "description": "What it is for, such as \"budget\".",
+            "title": "Type",
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "account": "#/components/schemas/CustomAccount",
+                  "amount": "#/components/schemas/CustomAmount-Input",
+                  "bool": "#/components/schemas/CustomBool",
+                  "date": "#/components/schemas/CustomDate",
+                  "number": "#/components/schemas/CustomNumber-Input",
+                  "string": "#/components/schemas/CustomString"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/CustomString"
+                },
+                {
+                  "$ref": "#/components/schemas/CustomNumber-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/CustomAmount-Input"
+                },
+                {
+                  "$ref": "#/components/schemas/CustomAccount"
+                },
+                {
+                  "$ref": "#/components/schemas/CustomDate"
+                },
+                {
+                  "$ref": "#/components/schemas/CustomBool"
+                }
+              ]
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "date",
+          "type"
+        ],
+        "title": "CustomDirective",
+        "type": "object"
+      },
+      "CustomDirective-Output": {
+        "description": "A `custom` entry: a named record with typed values, which other Beancount tools such as Fava read.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "const": "custom",
+            "default": "custom",
+            "title": "Kind",
+            "type": "string"
+          },
+          "type": {
+            "description": "What it is for, such as \"budget\".",
+            "title": "Type",
+            "type": "string"
+          },
+          "values": {
+            "items": {
+              "discriminator": {
+                "mapping": {
+                  "account": "#/components/schemas/CustomAccount",
+                  "amount": "#/components/schemas/CustomAmount-Output",
+                  "bool": "#/components/schemas/CustomBool",
+                  "date": "#/components/schemas/CustomDate",
+                  "number": "#/components/schemas/CustomNumber-Output",
+                  "string": "#/components/schemas/CustomString"
+                },
+                "propertyName": "type"
+              },
+              "oneOf": [
+                {
+                  "$ref": "#/components/schemas/CustomString"
+                },
+                {
+                  "$ref": "#/components/schemas/CustomNumber-Output"
+                },
+                {
+                  "$ref": "#/components/schemas/CustomAmount-Output"
+                },
+                {
+                  "$ref": "#/components/schemas/CustomAccount"
+                },
+                {
+                  "$ref": "#/components/schemas/CustomDate"
+                },
+                {
+                  "$ref": "#/components/schemas/CustomBool"
+                }
+              ]
+            },
+            "title": "Values",
+            "type": "array"
+          }
+        },
+        "required": [
+          "date",
+          "type"
+        ],
+        "title": "CustomDirective",
+        "type": "object"
+      },
+      "CustomNumber-Input": {
+        "properties": {
+          "type": {
+            "const": "number",
+            "default": "number",
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "type": "number"
+              },
+              {
+                "type": "string"
+              }
+            ],
+            "title": "Value"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "CustomNumber",
+        "type": "object"
+      },
+      "CustomNumber-Output": {
+        "properties": {
+          "type": {
+            "const": "number",
+            "default": "number",
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "CustomNumber",
+        "type": "object"
+      },
+      "CustomString": {
+        "properties": {
+          "type": {
+            "const": "string",
+            "default": "string",
+            "title": "Type",
+            "type": "string"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "CustomString",
         "type": "object"
       },
       "DeleteDirective": {
@@ -3101,6 +3412,41 @@
         "title": "LedgerInfo",
         "type": "object"
       },
+      "LedgerOptions": {
+        "description": "The ledger options that can be changed through the service (`PUT /ledgers/{id}/options/{name}`).",
+        "properties": {
+          "booking_method": {
+            "default": "STRICT",
+            "title": "Booking Method",
+            "type": "string"
+          },
+          "operating_currency": {
+            "items": {
+              "type": "string"
+            },
+            "title": "Operating Currency",
+            "type": "array"
+          },
+          "render_commas": {
+            "default": false,
+            "title": "Render Commas",
+            "type": "boolean"
+          },
+          "title": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Title"
+          }
+        },
+        "title": "LedgerOptions",
+        "type": "object"
+      },
       "LedgerStatus": {
         "properties": {
           "errors": {
@@ -3356,6 +3702,24 @@
         "title": "OpenItems",
         "type": "object"
       },
+      "OptionUpdate": {
+        "properties": {
+          "remove": {
+            "default": false,
+            "title": "Remove",
+            "type": "boolean"
+          },
+          "value": {
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "value"
+        ],
+        "title": "OptionUpdate",
+        "type": "object"
+      },
       "PadDirective": {
         "properties": {
           "account": {
@@ -3386,6 +3750,72 @@
           "source_account"
         ],
         "title": "PadDirective",
+        "type": "object"
+      },
+      "ParamSpec": {
+        "properties": {
+          "default": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Used when the parameter is left out. Dates default to today when not required.",
+            "title": "Default"
+          },
+          "description": {
+            "default": "",
+            "description": "What the person or agent should give. It becomes the parameter's description.",
+            "title": "Description",
+            "type": "string"
+          },
+          "required": {
+            "default": true,
+            "title": "Required",
+            "type": "boolean"
+          },
+          "type": {
+            "enum": [
+              "account",
+              "amount",
+              "text",
+              "date",
+              "number",
+              "tags"
+            ],
+            "title": "Type",
+            "type": "string"
+          },
+          "under": {
+            "anyOf": [
+              {
+                "items": {
+                  "enum": [
+                    "Assets",
+                    "Liabilities",
+                    "Equity",
+                    "Income",
+                    "Expenses"
+                  ],
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "For an account: the account types it may be, such as [\"Expenses\"].",
+            "title": "Under"
+          }
+        },
+        "required": [
+          "type"
+        ],
+        "title": "ParamSpec",
         "type": "object"
       },
       "PendingChange": {
@@ -3434,6 +3864,8 @@
                 "open_account": "#/components/schemas/OpenAccount",
                 "reconcile": "#/components/schemas/Reconcile-Output",
                 "set_account_details": "#/components/schemas/SetAccountDetails",
+                "set_option": "#/components/schemas/SetOption",
+                "set_profile_item": "#/components/schemas/SetProfileItem",
                 "update_directive": "#/components/schemas/UpdateDirective-Output",
                 "update_transaction": "#/components/schemas/UpdateTransaction-Output"
               },
@@ -3472,6 +3904,12 @@
               },
               {
                 "$ref": "#/components/schemas/AttachReceipt"
+              },
+              {
+                "$ref": "#/components/schemas/SetOption"
+              },
+              {
+                "$ref": "#/components/schemas/SetProfileItem"
               },
               {
                 "$ref": "#/components/schemas/Batch-Output"
@@ -3854,6 +4292,32 @@
         "title": "Posting",
         "type": "object"
       },
+      "PostingSpec": {
+        "properties": {
+          "account": {
+            "description": "`@self` (the account the action is performed on), `$name` (an account parameter) or a fixed account name.",
+            "title": "Account",
+            "type": "string"
+          },
+          "amount": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`$name` or `-$name` (an amount parameter), or absent for the rest of the entry.",
+            "title": "Amount"
+          }
+        },
+        "required": [
+          "account"
+        ],
+        "title": "PostingSpec",
+        "type": "object"
+      },
       "PriceDirective-Input": {
         "properties": {
           "amount": {
@@ -3952,6 +4416,16 @@
             "title": "Pools",
             "type": "object"
           },
+          "recipes": {
+            "description": "Recipes defined as data, for this ledger.",
+            "patternProperties": {
+              "^[a-z][a-z0-9_]{0,63}$": {
+                "$ref": "#/components/schemas/RecipeDefinition"
+              }
+            },
+            "title": "Recipes",
+            "type": "object"
+          },
           "recurring": {
             "patternProperties": {
               "^[a-z][a-z0-9_-]{0,63}$": {
@@ -4001,6 +4475,16 @@
               }
             },
             "title": "Pools",
+            "type": "object"
+          },
+          "recipes": {
+            "description": "Recipes defined as data, for this ledger.",
+            "patternProperties": {
+              "^[a-z][a-z0-9_]{0,63}$": {
+                "$ref": "#/components/schemas/RecipeDefinition"
+              }
+            },
+            "title": "Recipes",
             "type": "object"
           },
           "recurring": {
@@ -4068,6 +4552,37 @@
           }
         },
         "title": "Proposal",
+        "type": "object"
+      },
+      "QueryDirective": {
+        "description": "A saved query. The service stores it and Fava runs it; the service never executes the text.",
+        "properties": {
+          "date": {
+            "format": "date",
+            "title": "Date",
+            "type": "string"
+          },
+          "kind": {
+            "const": "query",
+            "default": "query",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          },
+          "query": {
+            "title": "Query",
+            "type": "string"
+          }
+        },
+        "required": [
+          "date",
+          "name",
+          "query"
+        ],
+        "title": "QueryDirective",
         "type": "object"
       },
       "Receipt": {
@@ -4254,6 +4769,80 @@
         "title": "ReceiptReading",
         "type": "object"
       },
+      "RecipeDefinition": {
+        "description": "A recipe as data. Performing it turns a few parameters into one transaction.",
+        "properties": {
+          "description": {
+            "title": "Description",
+            "type": "string"
+          },
+          "kinds": {
+            "description": "The account types it can be performed on, such as [\"checking\"].",
+            "items": {
+              "pattern": "^[a-z][a-z0-9_-]{0,31}$",
+              "type": "string"
+            },
+            "minItems": 1,
+            "title": "Kinds",
+            "type": "array"
+          },
+          "narration": {
+            "default": "",
+            "description": "May use {name} for a text, account, amount or number parameter.",
+            "title": "Narration",
+            "type": "string"
+          },
+          "params": {
+            "patternProperties": {
+              "^[a-z][a-z0-9_]{0,31}$": {
+                "$ref": "#/components/schemas/ParamSpec"
+              }
+            },
+            "title": "Params",
+            "type": "object"
+          },
+          "payee": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "May use {name} for a text or account parameter.",
+            "title": "Payee"
+          },
+          "postings": {
+            "items": {
+              "$ref": "#/components/schemas/PostingSpec"
+            },
+            "minItems": 2,
+            "title": "Postings",
+            "type": "array"
+          },
+          "tags": {
+            "items": {
+              "pattern": "^[A-Za-z0-9][A-Za-z0-9_\\-/.]*$",
+              "type": "string"
+            },
+            "title": "Tags",
+            "type": "array"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title",
+          "description",
+          "kinds",
+          "postings"
+        ],
+        "title": "RecipeDefinition",
+        "type": "object"
+      },
       "RecipeInfo": {
         "properties": {
           "description": {
@@ -4289,6 +4878,87 @@
           "params_schema"
         ],
         "title": "RecipeInfo",
+        "type": "object"
+      },
+      "RecipePreview": {
+        "properties": {
+          "account": {
+            "title": "Account",
+            "type": "string"
+          },
+          "definition": {
+            "$ref": "#/components/schemas/RecipeDefinition"
+          },
+          "id": {
+            "title": "Id",
+            "type": "string"
+          },
+          "ledger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ledger id. May be left out when there is exactly one.",
+            "title": "Ledger"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why, for the person who approves it.",
+            "title": "Note"
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "id",
+          "definition",
+          "account"
+        ],
+        "title": "RecipePreview",
+        "type": "object"
+      },
+      "RecipePreviewRequest": {
+        "properties": {
+          "account": {
+            "pattern": "^(Assets|Liabilities|Equity|Income|Expenses)(:[A-Z0-9][A-Za-z0-9-]*)+$",
+            "title": "Account",
+            "type": "string"
+          },
+          "definition": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/RecipeDefinition"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The definition to try. Left out, the saved one with this id is used."
+          },
+          "params": {
+            "additionalProperties": true,
+            "title": "Params",
+            "type": "object"
+          }
+        },
+        "required": [
+          "account"
+        ],
+        "title": "RecipePreviewRequest",
         "type": "object"
       },
       "Reconcile-Input": {
@@ -4384,11 +5054,13 @@
               "mapping": {
                 "balance": "#/components/schemas/BalanceAssertion-Output",
                 "commodity": "#/components/schemas/CommodityDirective",
+                "custom": "#/components/schemas/CustomDirective-Output",
                 "document": "#/components/schemas/DocumentDirective",
                 "event": "#/components/schemas/EventDirective",
                 "note": "#/components/schemas/NoteDirective",
                 "pad": "#/components/schemas/PadDirective",
-                "price": "#/components/schemas/PriceDirective-Output"
+                "price": "#/components/schemas/PriceDirective-Output",
+                "query": "#/components/schemas/QueryDirective"
               },
               "propertyName": "kind"
             },
@@ -4410,6 +5082,12 @@
               },
               {
                 "$ref": "#/components/schemas/DocumentDirective"
+              },
+              {
+                "$ref": "#/components/schemas/QueryDirective"
+              },
+              {
+                "$ref": "#/components/schemas/CustomDirective-Output"
               },
               {
                 "$ref": "#/components/schemas/EventDirective"
@@ -5071,6 +5749,153 @@
         "title": "SetAccountDetails",
         "type": "object"
       },
+      "SetOption": {
+        "description": "Set or remove one of the ledger's options, the few that are safe to change here.\n\n`operating_currency` may appear several times: setting adds a currency and `remove` takes one away. The others\nhave one value, which setting replaces and `remove` clears.",
+        "properties": {
+          "kind": {
+            "const": "set_option",
+            "default": "set_option",
+            "title": "Kind",
+            "type": "string"
+          },
+          "name": {
+            "enum": [
+              "title",
+              "operating_currency",
+              "render_commas",
+              "booking_method"
+            ],
+            "title": "Name",
+            "type": "string"
+          },
+          "remove": {
+            "default": false,
+            "title": "Remove",
+            "type": "boolean"
+          },
+          "value": {
+            "maxLength": 200,
+            "minLength": 1,
+            "pattern": "^[^\"\\\\\\x00-\\x1f]+$",
+            "title": "Value",
+            "type": "string"
+          }
+        },
+        "required": [
+          "name",
+          "value"
+        ],
+        "title": "SetOption",
+        "type": "object"
+      },
+      "SetProfileItem": {
+        "description": "Add, replace or (with no value) remove one item of the ledger's profile: a recipe, recurring item, budget or goal.\n\nIt changes how the service treats the ledger, not the ledger's entries, so it is never applied without a person\napproving it, even when agent changes are otherwise applied at once.",
+        "properties": {
+          "id": {
+            "maxLength": 64,
+            "minLength": 1,
+            "title": "Id",
+            "type": "string"
+          },
+          "item": {
+            "enum": [
+              "recipe",
+              "recurring",
+              "budget",
+              "goal"
+            ],
+            "title": "Item",
+            "type": "string"
+          },
+          "kind": {
+            "const": "set_profile_item",
+            "default": "set_profile_item",
+            "title": "Kind",
+            "type": "string"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The item as `get_setup` describes it. Leave out to remove it.",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "item",
+          "id"
+        ],
+        "title": "SetProfileItem",
+        "type": "object"
+      },
+      "SetupProposal": {
+        "properties": {
+          "id": {
+            "description": "The item's id. A recipe id is lowercase letters, digits and underscores.",
+            "title": "Id",
+            "type": "string"
+          },
+          "item": {
+            "enum": [
+              "recipe",
+              "recurring",
+              "budget",
+              "goal"
+            ],
+            "title": "Item",
+            "type": "string"
+          },
+          "ledger": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ledger id. May be left out when there is exactly one.",
+            "title": "Ledger"
+          },
+          "note": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Why, for the person who approves it.",
+            "title": "Note"
+          },
+          "value": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "The item as its schema describes it. Leave out to propose removing it.",
+            "title": "Value"
+          }
+        },
+        "required": [
+          "item",
+          "id"
+        ],
+        "title": "SetupProposal",
+        "type": "object"
+      },
       "SubmitChangeRequest": {
         "description": "Either a concrete operation or a recipe action to compile into one.",
         "properties": {
@@ -5110,6 +5935,8 @@
                     "open_account": "#/components/schemas/OpenAccount",
                     "reconcile": "#/components/schemas/Reconcile-Input",
                     "set_account_details": "#/components/schemas/SetAccountDetails",
+                    "set_option": "#/components/schemas/SetOption",
+                    "set_profile_item": "#/components/schemas/SetProfileItem",
                     "update_directive": "#/components/schemas/UpdateDirective-Input",
                     "update_transaction": "#/components/schemas/UpdateTransaction-Input"
                   },
@@ -5148,6 +5975,12 @@
                   },
                   {
                     "$ref": "#/components/schemas/AttachReceipt"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SetOption"
+                  },
+                  {
+                    "$ref": "#/components/schemas/SetProfileItem"
                   },
                   {
                     "$ref": "#/components/schemas/Batch-Input"
@@ -5541,11 +6374,13 @@
               "mapping": {
                 "balance": "#/components/schemas/BalanceAssertion-Input",
                 "commodity": "#/components/schemas/CommodityDirective",
+                "custom": "#/components/schemas/CustomDirective-Input",
                 "document": "#/components/schemas/DocumentDirective",
                 "event": "#/components/schemas/EventDirective",
                 "note": "#/components/schemas/NoteDirective",
                 "pad": "#/components/schemas/PadDirective",
-                "price": "#/components/schemas/PriceDirective-Input"
+                "price": "#/components/schemas/PriceDirective-Input",
+                "query": "#/components/schemas/QueryDirective"
               },
               "propertyName": "kind"
             },
@@ -5567,6 +6402,12 @@
               },
               {
                 "$ref": "#/components/schemas/DocumentDirective"
+              },
+              {
+                "$ref": "#/components/schemas/QueryDirective"
+              },
+              {
+                "$ref": "#/components/schemas/CustomDirective-Input"
               },
               {
                 "$ref": "#/components/schemas/EventDirective"
@@ -5599,11 +6440,13 @@
               "mapping": {
                 "balance": "#/components/schemas/BalanceAssertion-Output",
                 "commodity": "#/components/schemas/CommodityDirective",
+                "custom": "#/components/schemas/CustomDirective-Output",
                 "document": "#/components/schemas/DocumentDirective",
                 "event": "#/components/schemas/EventDirective",
                 "note": "#/components/schemas/NoteDirective",
                 "pad": "#/components/schemas/PadDirective",
-                "price": "#/components/schemas/PriceDirective-Output"
+                "price": "#/components/schemas/PriceDirective-Output",
+                "query": "#/components/schemas/QueryDirective"
               },
               "propertyName": "kind"
             },
@@ -5625,6 +6468,12 @@
               },
               {
                 "$ref": "#/components/schemas/DocumentDirective"
+              },
+              {
+                "$ref": "#/components/schemas/QueryDirective"
+              },
+              {
+                "$ref": "#/components/schemas/CustomDirective-Output"
               },
               {
                 "$ref": "#/components/schemas/EventDirective"
@@ -7855,6 +8704,111 @@
         ]
       }
     },
+    "/agent/recipes/preview": {
+      "post": {
+        "description": "The transaction a recipe definition would record for these parameters. Nothing is saved: use it to test a draft.",
+        "operationId": "preview_recipe_agent_recipes_preview_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipePreview"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "discriminator": {
+                    "mapping": {
+                      "add_directive": "#/components/schemas/AddDirective-Output",
+                      "add_transaction": "#/components/schemas/AddTransaction-Output",
+                      "attach_receipt": "#/components/schemas/AttachReceipt",
+                      "batch": "#/components/schemas/Batch-Output",
+                      "close_account": "#/components/schemas/CloseAccount",
+                      "delete_directive": "#/components/schemas/DeleteDirective",
+                      "delete_transaction": "#/components/schemas/DeleteTransaction",
+                      "open_account": "#/components/schemas/OpenAccount",
+                      "reconcile": "#/components/schemas/Reconcile-Output",
+                      "set_account_details": "#/components/schemas/SetAccountDetails",
+                      "set_option": "#/components/schemas/SetOption",
+                      "set_profile_item": "#/components/schemas/SetProfileItem",
+                      "update_directive": "#/components/schemas/UpdateDirective-Output",
+                      "update_transaction": "#/components/schemas/UpdateTransaction-Output"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AddTransaction-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UpdateTransaction-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DeleteTransaction"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpenAccount"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CloseAccount"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SetAccountDetails"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AddDirective-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UpdateDirective-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DeleteDirective"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Reconcile-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AttachReceipt"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SetOption"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SetProfileItem"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Batch-Output"
+                    }
+                  ],
+                  "title": "Response Preview Recipe Agent Recipes Preview Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Recipe",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
     "/agent/reconciliations": {
       "post": {
         "operationId": "reconcile_agent_reconciliations_post",
@@ -8317,6 +9271,151 @@
           }
         },
         "summary": "Income Statement",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/setup": {
+      "post": {
+        "description": "Propose adding, changing or removing a recipe, recurring item, budget or goal. A person approves it; nothing changes until then.",
+        "operationId": "propose_setup_agent_setup_post",
+        "parameters": [
+          {
+            "in": "header",
+            "name": "X-Client-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Client-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Session-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SetupProposal"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PendingChange"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Propose Setup",
+        "tags": [
+          "agent"
+        ]
+      }
+    },
+    "/agent/setup/{item}": {
+      "get": {
+        "description": "What can be set up of this kind: the schema of one item and the items there now.",
+        "operationId": "setup_agent_setup__item__get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "item",
+            "required": true,
+            "schema": {
+              "enum": [
+                "recipe",
+                "recurring",
+                "budget",
+                "goal"
+              ],
+              "title": "Item",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Ledger id. May be left out when there is exactly one.",
+            "in": "query",
+            "name": "ledger",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Ledger id. May be left out when there is exactly one.",
+              "title": "Ledger"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": true,
+                  "title": "Response Setup Agent Setup  Item  Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Setup",
         "tags": [
           "agent"
         ]
@@ -10646,11 +11745,13 @@
                   "mapping": {
                     "balance": "#/components/schemas/BalanceAssertion-Input",
                     "commodity": "#/components/schemas/CommodityDirective",
+                    "custom": "#/components/schemas/CustomDirective-Input",
                     "document": "#/components/schemas/DocumentDirective",
                     "event": "#/components/schemas/EventDirective",
                     "note": "#/components/schemas/NoteDirective",
                     "pad": "#/components/schemas/PadDirective",
-                    "price": "#/components/schemas/PriceDirective-Input"
+                    "price": "#/components/schemas/PriceDirective-Input",
+                    "query": "#/components/schemas/QueryDirective"
                   },
                   "propertyName": "kind"
                 },
@@ -10672,6 +11773,12 @@
                   },
                   {
                     "$ref": "#/components/schemas/DocumentDirective"
+                  },
+                  {
+                    "$ref": "#/components/schemas/QueryDirective"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CustomDirective-Input"
                   },
                   {
                     "$ref": "#/components/schemas/EventDirective"
@@ -10968,11 +12075,13 @@
                   "mapping": {
                     "balance": "#/components/schemas/BalanceAssertion-Input",
                     "commodity": "#/components/schemas/CommodityDirective",
+                    "custom": "#/components/schemas/CustomDirective-Input",
                     "document": "#/components/schemas/DocumentDirective",
                     "event": "#/components/schemas/EventDirective",
                     "note": "#/components/schemas/NoteDirective",
                     "pad": "#/components/schemas/PadDirective",
-                    "price": "#/components/schemas/PriceDirective-Input"
+                    "price": "#/components/schemas/PriceDirective-Input",
+                    "query": "#/components/schemas/QueryDirective"
                   },
                   "propertyName": "kind"
                 },
@@ -10994,6 +12103,12 @@
                   },
                   {
                     "$ref": "#/components/schemas/DocumentDirective"
+                  },
+                  {
+                    "$ref": "#/components/schemas/QueryDirective"
+                  },
+                  {
+                    "$ref": "#/components/schemas/CustomDirective-Input"
                   },
                   {
                     "$ref": "#/components/schemas/EventDirective"
@@ -11922,6 +13037,181 @@
         ]
       }
     },
+    "/ledgers/{ledger_id}/options": {
+      "get": {
+        "description": "The ledger options this service can change: title, operating currencies, comma rendering and the booking method.",
+        "operationId": "get_options_ledgers__ledger_id__options_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LedgerOptions"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Get Options",
+        "tags": [
+          "ledgers"
+        ]
+      }
+    },
+    "/ledgers/{ledger_id}/options/{name}": {
+      "put": {
+        "description": "Set an option, or with `remove` clear it (for `operating_currency`, take that currency away).",
+        "operationId": "set_option_ledgers__ledger_id__options__name__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "name",
+            "required": true,
+            "schema": {
+              "enum": [
+                "title",
+                "operating_currency",
+                "render_commas",
+                "booking_method"
+              ],
+              "title": "Name",
+              "type": "string"
+            }
+          },
+          {
+            "description": "Ledger version the caller last saw; the write is refused if the ledger has moved on.",
+            "in": "header",
+            "name": "If-Match",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "description": "Ledger version the caller last saw; the write is refused if the ledger has moved on.",
+              "title": "If-Match"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Actor",
+            "required": false,
+            "schema": {
+              "default": "user",
+              "enum": [
+                "user",
+                "agent"
+              ],
+              "title": "X-Actor",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Client-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Session-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/OptionUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/WriteResult"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Option",
+        "tags": [
+          "ledgers"
+        ]
+      }
+    },
     "/ledgers/{ledger_id}/pools": {
       "get": {
         "description": "Shared credit limits: used and available, converting with the ledger's price directives.",
@@ -12439,6 +13729,377 @@
         "summary": "Receipt File",
         "tags": [
           "receipts"
+        ]
+      }
+    },
+    "/ledgers/{ledger_id}/recipe-definitions": {
+      "get": {
+        "description": "The recipes this ledger defines as data, by id.",
+        "operationId": "list_recipe_definitions_ledgers__ledger_id__recipe_definitions_get",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "additionalProperties": {
+                    "$ref": "#/components/schemas/RecipeDefinition"
+                  },
+                  "title": "Response List Recipe Definitions Ledgers  Ledger Id  Recipe Definitions Get",
+                  "type": "object"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "List Recipe Definitions",
+        "tags": [
+          "actions"
+        ]
+      }
+    },
+    "/ledgers/{ledger_id}/recipe-definitions/{recipe_id}": {
+      "delete": {
+        "operationId": "delete_recipe_definition_ledgers__ledger_id__recipe_definitions__recipe_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
+              "title": "Recipe Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Actor",
+            "required": false,
+            "schema": {
+              "default": "user",
+              "enum": [
+                "user",
+                "agent"
+              ],
+              "title": "X-Actor",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Client-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Session-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Id"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Delete Recipe Definition",
+        "tags": [
+          "actions"
+        ]
+      },
+      "put": {
+        "description": "Add or replace a recipe written as data. Users only: it changes what agents can do on the ledger's accounts.",
+        "operationId": "set_recipe_definition_ledgers__ledger_id__recipe_definitions__recipe_id__put",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
+              "title": "Recipe Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Actor",
+            "required": false,
+            "schema": {
+              "default": "user",
+              "enum": [
+                "user",
+                "agent"
+              ],
+              "title": "X-Actor",
+              "type": "string"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Client-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Client-Id"
+            }
+          },
+          {
+            "in": "header",
+            "name": "X-Session-Id",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "X-Session-Id"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipeDefinition"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ProfileView"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Set Recipe Definition",
+        "tags": [
+          "actions"
+        ]
+      }
+    },
+    "/ledgers/{ledger_id}/recipe-definitions/{recipe_id}/preview": {
+      "post": {
+        "description": "The transaction a definition would record for these parameters on this account. Nothing is saved or written.",
+        "operationId": "preview_recipe_definition_ledgers__ledger_id__recipe_definitions__recipe_id__preview_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "ledger_id",
+            "required": true,
+            "schema": {
+              "title": "Ledger Id",
+              "type": "string"
+            }
+          },
+          {
+            "in": "path",
+            "name": "recipe_id",
+            "required": true,
+            "schema": {
+              "pattern": "^[a-z][a-z0-9_]{0,63}$",
+              "title": "Recipe Id",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecipePreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "discriminator": {
+                    "mapping": {
+                      "add_directive": "#/components/schemas/AddDirective-Output",
+                      "add_transaction": "#/components/schemas/AddTransaction-Output",
+                      "attach_receipt": "#/components/schemas/AttachReceipt",
+                      "batch": "#/components/schemas/Batch-Output",
+                      "close_account": "#/components/schemas/CloseAccount",
+                      "delete_directive": "#/components/schemas/DeleteDirective",
+                      "delete_transaction": "#/components/schemas/DeleteTransaction",
+                      "open_account": "#/components/schemas/OpenAccount",
+                      "reconcile": "#/components/schemas/Reconcile-Output",
+                      "set_account_details": "#/components/schemas/SetAccountDetails",
+                      "set_option": "#/components/schemas/SetOption",
+                      "set_profile_item": "#/components/schemas/SetProfileItem",
+                      "update_directive": "#/components/schemas/UpdateDirective-Output",
+                      "update_transaction": "#/components/schemas/UpdateTransaction-Output"
+                    },
+                    "propertyName": "kind"
+                  },
+                  "oneOf": [
+                    {
+                      "$ref": "#/components/schemas/AddTransaction-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UpdateTransaction-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DeleteTransaction"
+                    },
+                    {
+                      "$ref": "#/components/schemas/OpenAccount"
+                    },
+                    {
+                      "$ref": "#/components/schemas/CloseAccount"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SetAccountDetails"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AddDirective-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/UpdateDirective-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/DeleteDirective"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Reconcile-Output"
+                    },
+                    {
+                      "$ref": "#/components/schemas/AttachReceipt"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SetOption"
+                    },
+                    {
+                      "$ref": "#/components/schemas/SetProfileItem"
+                    },
+                    {
+                      "$ref": "#/components/schemas/Batch-Output"
+                    }
+                  ],
+                  "title": "Response Preview Recipe Definition Ledgers  Ledger Id  Recipe Definitions  Recipe Id  Preview Post"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "summary": "Preview Recipe Definition",
+        "tags": [
+          "actions"
         ]
       }
     },

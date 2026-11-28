@@ -233,3 +233,15 @@ export function receipt(reading: any): string {
   })
   return [`Receipt ${reading.path}. ${reading.notice}`, ...pages].join('\n\n')
 }
+
+export function setup(result: any): string {
+  const items = Object.entries(result.current as Record<string, unknown>).map(([id, value]) => `  ${id}: ${JSON.stringify(value)}`)
+  return [`Schema of a ${result.item}:`, JSON.stringify(result.schema), items.length === 0 ? `No ${result.item} items exist yet.` : `Existing ${result.item} items:`, ...items].join('\n')
+}
+
+export function preview(operation: any): string {
+  const transaction = operation.transaction
+  if (transaction === undefined) return `It would record: ${JSON.stringify(operation)}`
+  const postings = transaction.postings.map((posting: any) => `  ${posting.account}  ${posting.units === null || posting.units === undefined ? '(the rest)' : `${posting.units.number} ${posting.units.currency}`}`)
+  return [`It would record, on ${transaction.date}: ${[transaction.payee, transaction.narration].filter(Boolean).join(' - ')}`, ...postings, 'Nothing was saved.'].join('\n')
+}

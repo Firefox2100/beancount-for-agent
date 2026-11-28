@@ -18,8 +18,17 @@ from beancount_mcp.models.details import AccountDetails, AccountDetailsUpdate
 from beancount_mcp.models.directives import (
     BalanceAssertion,
     CommodityDirective,
+    CustomAccount,
+    CustomAmount,
+    CustomBool,
+    CustomDate,
+    CustomDirective,
+    CustomNumber,
+    CustomString,
+    CustomValue,
     Directive,
     DocumentDirective,
+    QueryDirective,
     EventDirective,
     NoteDirective,
     PadDirective,
@@ -49,6 +58,8 @@ from beancount_mcp.models.operations import (
     Operation,
     Reconcile,
     SetAccountDetails,
+    SetOption,
+    SetProfileItem,
     UpdateTransaction,
 )
 from beancount_mcp.models.profile import (

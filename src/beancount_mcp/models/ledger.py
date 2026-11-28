@@ -35,3 +35,12 @@ class CreateLedgerRequest(BaseModel):
     id: str = Field(pattern=LEDGER_ID_PATTERN)
     title: Text | None = None
     operating_currencies: list[CurrencyCode] = Field(default_factory=list)
+
+
+class LedgerOptions(BaseModel):
+    """The ledger options that can be changed through the service (`PUT /ledgers/{id}/options/{name}`)."""
+
+    title: str | None = None
+    operating_currency: list[str] = Field(default_factory=list)
+    render_commas: bool = False
+    booking_method: str = "STRICT"

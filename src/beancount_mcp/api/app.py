@@ -66,7 +66,8 @@ def create_app(settings: Settings | None = None, registry: RecipeRegistry | None
         ReceiptAccess(text=settings.receipts_ocr_enabled, images=settings.receipts_agent_images),
         settings.receipts_ocr_backend, settings.receipts_max_pages,
     )
-    agent = AgentService(store, ledger_service, change_service, actions_service, view_service, import_service, receipt_service)
+    profile_service = ProfileService(store, registry)
+    agent = AgentService(store, ledger_service, change_service, actions_service, view_service, import_service, receipt_service, profile_service)
     mcp_app = mcp_instance = None
     if settings.mcp_enabled:
         mcp = create_mcp(agent, settings.mcp_raw_transactions, receipt_service.access)
@@ -80,7 +81,7 @@ def create_app(settings: Settings | None = None, registry: RecipeRegistry | None
     app.state.action_service = actions_service
     app.state.view_service = view_service
     app.state.reference_rates = reference_rates
-    app.state.profile_service = ProfileService(store, registry)
+    app.state.profile_service = profile_service
     app.state.change_service = change_service
     app.state.import_service = import_service
     app.state.receipt_service = receipt_service

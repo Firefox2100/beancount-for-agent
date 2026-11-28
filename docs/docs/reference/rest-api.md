@@ -30,6 +30,10 @@ The complete CRUD surface, used by people, scripts and harness plugins that act 
 | `GET` | `/ledgers/{ledger_id}/kinds` | Account types to choose from when opening an account, with the recipes each one gets. |
 | `GET` | `/ledgers/{ledger_id}/profile` | Get Profile |
 | `PUT` | `/ledgers/{ledger_id}/profile` | Put Profile |
+| `GET` | `/ledgers/{ledger_id}/recipe-definitions` | The recipes this ledger defines as data, by id. |
+| `DELETE` | `/ledgers/{ledger_id}/recipe-definitions/{recipe_id}` | Delete Recipe Definition |
+| `PUT` | `/ledgers/{ledger_id}/recipe-definitions/{recipe_id}` | Add or replace a recipe written as data. Users only: it changes what agents can do on the ledger's accounts. |
+| `POST` | `/ledgers/{ledger_id}/recipe-definitions/{recipe_id}/preview` | The transaction a definition would record for these parameters on this account. Nothing is saved or written. |
 | `GET` | `/ledgers/{ledger_id}/recipes` | List Recipes |
 
 ## Budgets
@@ -88,6 +92,8 @@ The complete CRUD surface, used by people, scripts and harness plugins that act 
 | `GET` | `/ledgers` | List Ledgers |
 | `POST` | `/ledgers` | Create Ledger |
 | `GET` | `/ledgers/{ledger_id}` | Get Ledger |
+| `GET` | `/ledgers/{ledger_id}/options` | The ledger options this service can change: title, operating currencies, comma rendering and the booking method. |
+| `PUT` | `/ledgers/{ledger_id}/options/{name}` | Set an option, or with `remove` clear it (for `operating_currency`, take that currency away). |
 
 ## Receipts
 

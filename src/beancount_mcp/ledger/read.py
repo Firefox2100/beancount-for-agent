@@ -14,7 +14,15 @@ from beancount_mcp.models import (
     BalanceAssertion,
     CommodityDirective,
     Directive,
+    CustomAccount,
+    CustomAmount,
+    CustomBool,
+    CustomDate,
+    CustomDirective,
+    CustomNumber,
+    CustomString,
     DocumentDirective,
+    QueryDirective,
     EventDirective,
     NoteDirective,
     PadDirective,
@@ -34,7 +42,7 @@ def is_user_transaction(entry) -> bool:
     return isinstance(entry, data.Transaction) and entry.flag in USER_FLAGS
 
 
-RECORD_TYPES = (data.Balance, data.Pad, data.Price, data.Commodity, data.Note, data.Document, data.Event)
+RECORD_TYPES = (data.Balance, data.Pad, data.Price, data.Commodity, data.Note, data.Document, data.Query, data.Custom, data.Event)
 
 
 def entry_fingerprint(entry) -> str:
@@ -77,11 +85,34 @@ def to_directive(entry, root: Path | None = None) -> Directive:
             return CommodityDirective(date=entry.date, currency=entry.currency)
         case data.Note():
             return NoteDirective(date=entry.date, account=entry.account, comment=entry.comment)
+        case data.Query():
+            return QueryDirective(date=entry.date, name=entry.name, query=entry.query_string)
+        case data.Custom():
+            return CustomDirective(date=entry.date, type=entry.type, values=[_custom_value(v) for v in entry.values])
         case data.Document():
             return DocumentDirective(date=entry.date, account=entry.account, path=_relative(entry.filename, root))
         case data.Event():
             return EventDirective(date=entry.date, type=entry.type, description=entry.description)
     raise TypeError(type(entry).__name__)
+
+
+def _custom_value(item):
+    """A custom entry's value, by the type Beancount parsed it as."""
+    from beancount.core import account as bc_account
+    from beancount.core.amount import Amount as BcAmount
+
+    value, kind = item.value, item.dtype
+    if kind == bc_account.TYPE:
+        return CustomAccount(value=value)
+    if kind is BcAmount:
+        return CustomAmount(value=Amount(number=value.number, currency=value.currency))
+    if kind is bool:
+        return CustomBool(value=value)
+    if kind is date:
+        return CustomDate(value=value)
+    if kind is Decimal:
+        return CustomNumber(value=value)
+    return CustomString(value=str(value))
 
 
 def _relative(filename: str, root: Path | None) -> str:

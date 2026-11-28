@@ -58,6 +58,60 @@ class DocumentDirective(BaseModel):
         return value
 
 
+class QueryDirective(BaseModel):
+    """A saved query. The service stores it and Fava runs it; the service never executes the text."""
+
+    kind: Literal["query"] = "query"
+    date: dt.date
+    name: Text
+    query: Text
+
+
+class CustomString(BaseModel):
+    type: Literal["string"] = "string"
+    value: Text
+
+
+class CustomNumber(BaseModel):
+    type: Literal["number"] = "number"
+    value: FiniteDecimal
+
+
+class CustomAmount(BaseModel):
+    type: Literal["amount"] = "amount"
+    value: Amount
+
+
+class CustomAccount(BaseModel):
+    type: Literal["account"] = "account"
+    value: AccountName
+
+
+class CustomDate(BaseModel):
+    type: Literal["date"] = "date"
+    value: dt.date
+
+
+class CustomBool(BaseModel):
+    type: Literal["bool"] = "bool"
+    value: bool
+
+
+CustomValue = Annotated[
+    CustomString | CustomNumber | CustomAmount | CustomAccount | CustomDate | CustomBool,
+    Field(discriminator="type"),
+]
+
+
+class CustomDirective(BaseModel):
+    """A `custom` entry: a named record with typed values, which other Beancount tools such as Fava read."""
+
+    kind: Literal["custom"] = "custom"
+    date: dt.date
+    type: Text = Field(description='What it is for, such as "budget".')
+    values: list[CustomValue] = Field(default_factory=list)
+
+
 class EventDirective(BaseModel):
     kind: Literal["event"] = "event"
     date: dt.date
@@ -66,7 +120,7 @@ class EventDirective(BaseModel):
 
 
 Directive = Annotated[
-    BalanceAssertion | PadDirective | PriceDirective | CommodityDirective | NoteDirective | DocumentDirective | EventDirective,
+    BalanceAssertion | PadDirective | PriceDirective | CommodityDirective | NoteDirective | DocumentDirective | QueryDirective | CustomDirective | EventDirective,
     Field(discriminator="kind"),
 ]
 

@@ -123,6 +123,15 @@ Recurring items (rent, subscriptions, salary) with what is overdue or coming up 
 | `lookback_days` | integer |  |
 | `within_days` | integer |  |
 
+### `get_setup`
+
+What can be set up of one kind (recipe, recurring, budget, goal): the schema of an item and the items there now. Use it before propose_setup.
+
+| Argument | Type | Required |
+| --- | --- | --- |
+| `item` | string | yes |
+| `ledger` | string |  |
+
 ### `list_account_types`
 
 Account types that can be given when opening an account, with the recipes each one gets.
@@ -160,6 +169,18 @@ Changes proposed through this connection and whether they were approved.
 | --- | --- | --- |
 | `ledger` | string |  |
 | `status` | string |  |
+
+### `preview_recipe`
+
+Try a recipe you drafted: the transaction it would record for these parameters on this account. Nothing is saved. Test a draft before proposing it.
+
+| Argument | Type | Required |
+| --- | --- | --- |
+| `account` | string | yes |
+| `definition` | object | yes |
+| `id` | string | yes |
+| `ledger` | string |  |
+| `params` | object |  |
 
 ### `search_transactions`
 
@@ -258,6 +279,18 @@ Lines already in the ledger are left out automatically.
 | `ledger` | string |  |
 | `note` | string |  |
 | `skip` | list of integer |  |
+
+### `propose_setup`
+
+Propose a new or changed recipe, recurring item, budget or goal for the user to approve. It changes nothing until they do.
+
+| Argument | Type | Required |
+| --- | --- | --- |
+| `id` | string | yes |
+| `item` | string | yes |
+| `ledger` | string |  |
+| `note` | string |  |
+| `value` | object |  |
 
 ### `reconcile_account`
 

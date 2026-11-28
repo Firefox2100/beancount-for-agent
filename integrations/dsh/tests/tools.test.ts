@@ -248,6 +248,23 @@ describe('the finance tools', () => {
     expect(JSON.parse(service?.requests.at(-1)?.body ?? '{}').receipt).toBe('documents/x.png')
   })
 
+  it('describe what can be set up, preview a drafted recipe, and propose a setup for approval', async () => {
+    const preview = { kind: 'add_transaction', transaction: { date: '2026-11-28', payee: null, narration: 'Bank fee', postings: [{ account: 'Assets:Bank', units: { number: '-3', currency: 'GBP' } }, { account: 'Expenses:Fees', units: null }] } }
+    const { run } = await setup({
+      'GET /agent/setup/recipe': { body: { item: 'recipe', schema: { type: 'object' }, current: { bank_fee: { title: 'Bank fee' } } } },
+      'POST /agent/recipes/preview': { body: preview },
+      'POST /agent/setup': { status: 201, body: change },
+    })
+    const described = await run('finance_setup', { item: 'recipe' })
+    expect(described).toMatch(/Schema of a recipe:\n\{"type":"object"\}\nExisting recipe items:\n {2}bank_fee: \{"title":"Bank fee"\}/)
+    const shown = await run('finance_preview_recipe', { id: 'bank_fee', definition: { title: 'x' }, account: 'Bank', params: { fee: '3 GBP' } })
+    expect(shown).toMatch(/It would record, on 2026-11-28: Bank fee\n {2}Assets:Bank {2}-3 GBP\n {2}Expenses:Fees {2}\(the rest\)\nNothing was saved./)
+    expect(JSON.parse(service?.requests[1]?.body ?? '{}')).toEqual({ ledger: 'personal', id: 'bank_fee', definition: { title: 'x' }, account: 'Bank', params: { fee: '3 GBP' } })
+    const proposed = await run('finance_propose_setup', { item: 'budget', id: 'food', value: { account: 'Expenses:Food' }, note: 'a start' })
+    expect(JSON.parse(service?.requests[2]?.body ?? '{}')).toEqual({ ledger: 'personal', item: 'budget', id: 'food', value: { account: 'Expenses:Food' }, note: 'a start' })
+    expect(proposed).toMatch(/waiting for the user to approve/)
+  })
+
   it('amend and delete address the transaction by id', async () => {
     const { run } = await setup({
       'POST /agent/transactions/abc/amend': { status: 201, body: change },

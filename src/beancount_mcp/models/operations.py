@@ -1,7 +1,8 @@
 import datetime as dt
-from typing import Annotated, Literal
+import re
+from typing import Annotated, Any, Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from beancount_mcp.models.accounts import OpenAccountRequest
 from beancount_mcp.models.common import AccountName, Amount
@@ -67,6 +68,49 @@ class AttachReceipt(BaseModel):
     path: str = Field(description="The receipt, relative to the ledger folder.")
 
 
+OptionName = Literal["title", "operating_currency", "render_commas", "booking_method"]
+BOOKING_METHODS = ("STRICT", "STRICT_WITH_SIZE", "NONE", "AVERAGE", "FIFO", "LIFO", "HIFO")
+
+
+class SetOption(BaseModel):
+    """Set or remove one of the ledger's options, the few that are safe to change here.
+
+    `operating_currency` may appear several times: setting adds a currency and `remove` takes one away. The others
+    have one value, which setting replaces and `remove` clears.
+    """
+
+    kind: Literal["set_option"] = "set_option"
+    name: OptionName
+    value: str = Field(min_length=1, max_length=200, pattern=r'^[^"\\\x00-\x1f]+$')
+    remove: bool = False
+
+    @model_validator(mode="after")
+    def _valid_value(self):
+        if self.name == "operating_currency" and not re.fullmatch(r"[A-Z][A-Z0-9'._-]{0,22}[A-Z0-9]?", self.value):
+            raise ValueError("an operating currency is a currency code such as GBP")
+        if self.name == "render_commas" and self.value not in ("TRUE", "FALSE"):
+            raise ValueError("render_commas is TRUE or FALSE")
+        if self.name == "booking_method" and self.value not in BOOKING_METHODS:
+            raise ValueError(f"booking_method is one of {', '.join(BOOKING_METHODS)}")
+        return self
+
+
+ProfileItemKind = Literal["recipe", "recurring", "budget", "goal"]
+
+
+class SetProfileItem(BaseModel):
+    """Add, replace or (with no value) remove one item of the ledger's profile: a recipe, recurring item, budget or goal.
+
+    It changes how the service treats the ledger, not the ledger's entries, so it is never applied without a person
+    approving it, even when agent changes are otherwise applied at once.
+    """
+
+    kind: Literal["set_profile_item"] = "set_profile_item"
+    item: ProfileItemKind
+    id: str = Field(min_length=1, max_length=64)
+    value: dict[str, Any] | None = Field(default=None, description="The item as `get_setup` describes it. Leave out to remove it.")
+
+
 class Reconcile(BaseModel):
     """Assert an account's balance, optionally padding the difference from another account."""
 
@@ -102,6 +146,8 @@ Operation = Annotated[
     | DeleteDirective
     | Reconcile
     | AttachReceipt
+    | SetOption
+    | SetProfileItem
     | Batch,
     Field(discriminator="kind"),
 ]

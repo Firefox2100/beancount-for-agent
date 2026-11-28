@@ -14,6 +14,7 @@ from beancount_mcp.ledger.edit import apply_operation
 from beancount_mcp.ledger.errors import ChangeRejected, StaleVersion
 from beancount_mcp.ledger.receipts import DOCUMENTS_DIR
 from beancount_mcp.ledger.layout import MAIN_FILE, SIDECAR_DIR
+from beancount_mcp.models.ledger import LedgerOptions
 from beancount_mcp.models import (
     AccountBalance,
     AccountInfo,
@@ -36,6 +37,9 @@ class AppliedChange:
     transaction_id: str | None = None
     record_id: str | None = None
     account: str | None = None
+
+
+APPLY_ATTEMPTS = 3
 
 
 @dataclass(frozen=True)
@@ -77,6 +81,16 @@ class Ledger:
         """Configured reporting currencies, without exposing raw ledger options at the service boundary."""
         _, _, options = loader.load_file(str(self.main_file))
         return list(options.get("operating_currency", []))
+
+    def options(self) -> LedgerOptions:
+        """The options this service knows how to change."""
+        _, _, options = loader.load_file(str(self.main_file))
+        return LedgerOptions(
+            title=options.get("title") or None,
+            operating_currency=list(options.get("operating_currency", [])),
+            render_commas=bool(options.get("render_commas", False)),
+            booking_method=str(getattr(options.get("booking_method"), "value", "STRICT")),
+        )
 
     def status(self) -> LedgerStatus:
         _, errors = self.load()
@@ -121,27 +135,38 @@ class Ledger:
         `dry_run` the full validation runs but nothing is committed.
         """
         with self.lock:
-            version = self.version()
-            if expected_version is not None and expected_version != version:
-                raise StaleVersion(f"ledger is at version {version}, not {expected_version}")
+            for attempt in range(1, APPLY_ATTEMPTS + 1):
+                version = self.version()
+                if expected_version is not None and expected_version != version:
+                    raise StaleVersion(f"ledger is at version {version}, not {expected_version}")
+                try:
+                    return self._apply_once(operation, version, dry_run)
+                except _ChangedUnderneath:
+                    # Someone else (Fava, an editor) wrote a ledger file while this change was being prepared. The
+                    # edit is computed from line positions, so it is simply computed again on what is there now.
+                    # A caller that pinned a version asked for exactly that state and gets the conflict instead.
+                    if expected_version is not None or attempt == APPLY_ATTEMPTS:
+                        raise StaleVersion("ledger changed while the change was being prepared") from None
+        raise AssertionError("unreachable")
 
-            with tempfile.TemporaryDirectory() as temp:
-                stage = Path(temp)
-                self._copy_to(stage)
-                entries, baseline = loader.load_file(str(stage / MAIN_FILE))[:2]
-                touched = apply_operation(stage, self.layout, entries, operation)
-                errors = loader.load_file(str(stage / MAIN_FILE))[1]
+    def _apply_once(self, operation: Operation, version: str, dry_run: bool) -> AppliedChange:
+        with tempfile.TemporaryDirectory() as temp:
+            stage = Path(temp)
+            self._copy_to(stage)
+            entries, baseline = loader.load_file(str(stage / MAIN_FILE))[:2]
+            touched = apply_operation(stage, self.layout, entries, operation)
+            errors = loader.load_file(str(stage / MAIN_FILE))[1]
 
-                introduced = _introduced_errors(baseline, errors)
-                if introduced:
-                    raise ChangeRejected([_convert_error(error, stage) for error in introduced])
+            introduced = _introduced_errors(baseline, errors)
+            if introduced:
+                raise ChangeRejected([_convert_error(error, stage) for error in introduced])
 
-                if dry_run:
-                    return AppliedChange(version=version, **touched)
-                if self.version() != version:
-                    raise StaleVersion("ledger changed while the change was being prepared")
-                self._commit_from(stage)
-            return AppliedChange(version=self.version(), **touched)
+            if dry_run:
+                return AppliedChange(version=version, **touched)
+            if self.version() != version:
+                raise _ChangedUnderneath()
+            self._commit_from(stage)
+        return AppliedChange(version=self.version(), **touched)
 
     def _copy_to(self, stage: Path) -> None:
         documents = self.root / DOCUMENTS_DIR
@@ -164,6 +189,10 @@ class Ledger:
             temp = target.with_name(target.name + ".tmp")
             temp.write_bytes(content)
             os.replace(temp, target)
+
+
+class _ChangedUnderneath(Exception):
+    """The ledger files changed between staging a change and committing it."""
 
 
 def _introduced_errors(baseline: list, current: list) -> list:

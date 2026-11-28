@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from beancount_mcp.api.deps import AgentServiceDep
 from beancount_mcp.models import (
+    Operation,
     AccountBalance,
     AccountInfo,
     Caller,
@@ -29,6 +30,7 @@ from beancount_mcp.models import (
 from beancount_mcp.models.common import Rate
 from beancount_mcp.models.views import DueItem, FinancialPosition, OpenItems, PoolStatus, ReferenceRateStatus
 from beancount_mcp.models.imports import ImportReview, ImportSummary
+from beancount_mcp.models.declarative import RecipeDefinition
 from beancount_mcp.models.receipts import ReceiptReading
 from beancount_mcp.models.recurring import RecurringStatus, RecurringSuggestion
 from beancount_mcp.models.budgets import BudgetStatus, BudgetSuggestion
@@ -245,6 +247,37 @@ async def recurring(
 async def recurring_suggestions(agent: AgentServiceDep, ledger: LedgerQuery = None) -> list[RecurringSuggestion]:
     """Repeating payments in the history that no recurring item covers. Only the user can add an item."""
     return await agent.recurring_suggestions(ledger)
+
+
+@router.get("/setup/{item}")
+async def setup(item: Literal["recipe", "recurring", "budget", "goal"], agent: AgentServiceDep, ledger: LedgerQuery = None) -> dict:
+    """What can be set up of this kind: the schema of one item and the items there now."""
+    return await agent.setup(ledger, item)
+
+
+class SetupProposal(Proposal):
+    item: Literal["recipe", "recurring", "budget", "goal"]
+    id: str = Field(description="The item's id. A recipe id is lowercase letters, digits and underscores.")
+    value: dict[str, Any] | None = Field(default=None, description="The item as its schema describes it. Leave out to propose removing it.")
+
+
+@router.post("/setup", status_code=201)
+async def propose_setup(request: SetupProposal, agent: AgentServiceDep, caller: AgentCaller) -> PendingChange:
+    """Propose adding, changing or removing a recipe, recurring item, budget or goal. A person approves it; nothing changes until then."""
+    return await agent.propose_setup(request.ledger, request.item, request.id, request.value, request.note, caller, None)
+
+
+class RecipePreview(Proposal):
+    id: str
+    definition: RecipeDefinition
+    account: str
+    params: dict[str, Any] = Field(default_factory=dict)
+
+
+@router.post("/recipes/preview")
+async def preview_recipe(request: RecipePreview, agent: AgentServiceDep) -> Operation:
+    """The transaction a recipe definition would record for these parameters. Nothing is saved: use it to test a draft."""
+    return await agent.preview_recipe(request.ledger, request.id, request.definition, request.account, request.params)
 
 
 @router.get("/capabilities")

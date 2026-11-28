@@ -7,6 +7,7 @@ from beancount_mcp.ledger.profile import ProfileStore
 from beancount_mcp.ledger.errors import ApprovalRequired, TransactionNotFound
 from beancount_mcp.ledger.store import LedgerStore
 from beancount_mcp.recipes.registry import RecipeRegistry
+from beancount_mcp.models.ledger import LedgerOptions
 from beancount_mcp.models import (
     AccountBalance,
     AccountInfo,
@@ -45,6 +46,9 @@ class LedgerService:
 
     async def create_ledger(self, request: CreateLedgerRequest) -> LedgerStatus:
         return await asyncio.to_thread(lambda: self._store.create(request).status())
+
+    async def get_options(self, ledger_id: str) -> LedgerOptions:
+        return await asyncio.to_thread(lambda: self._store.open(ledger_id).options())
 
     async def get_ledger(self, ledger_id: str) -> LedgerStatus:
         return await asyncio.to_thread(lambda: self._store.open(ledger_id).status())

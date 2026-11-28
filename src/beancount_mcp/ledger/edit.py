@@ -1,5 +1,6 @@
 import datetime as dt
 import os
+import re
 import uuid
 from decimal import Decimal
 from pathlib import Path
@@ -7,15 +8,20 @@ from pathlib import Path
 from beancount.core import data
 from beancount.core.amount import Amount as BcAmount
 from beancount.parser import printer
+from beancount.parser.grammar import ValueType
 
 from beancount_mcp.ledger.errors import NotEditable, TransactionNotFound
-from beancount_mcp.ledger.layout import accounts_file, transaction_file
+from beancount_mcp.ledger.layout import MAIN_FILE, accounts_file, transaction_file
 from beancount_mcp.ledger.read import find_record, find_transaction, to_transaction
 from beancount_mcp.models.details import meta_key, to_meta
 from beancount_mcp.models import (
     AddDirective,
     AttachReceipt,
+    CustomDirective,
     DocumentDirective,
+    QueryDirective,
+    SetOption,
+    SetProfileItem,
     AddTransaction,
     Batch,
     BalanceAssertion,
@@ -68,6 +74,10 @@ def apply_operation(stage: Path, layout: Layout, entries: list, operation: Opera
             return {"record_id": new_id}
         case AttachReceipt():
             return _attach_receipt(stage, layout, entries, operation)
+        case SetOption():
+            return _set_option(stage, operation)
+        case SetProfileItem():
+            raise NotEditable("profile items are changed through the profile, not the ledger files")
         case UpdateDirective():
             return _update_directive(stage, layout, entries, operation)
         case Reconcile():
@@ -181,9 +191,65 @@ def _render_directive(directive: Directive, identifier: str, stage: Path | None 
             # Beancount reads a document's path relative to the file it is written in.
             filename = os.path.relpath(stage / directive.path, target.parent)  # type: ignore[operator]
             entry = data.Document(meta, directive.date, directive.account, filename, None, None)
+        case QueryDirective():
+            entry = data.Query(meta, directive.date, directive.name, directive.query)
+        case CustomDirective():
+            entry = data.Custom(meta, directive.date, directive.type, [_custom_item(v) for v in directive.values])
         case EventDirective():
             entry = data.Event(meta, directive.date, directive.type, directive.description)
     return printer.format_entry(entry)
+
+
+def _custom_item(value) -> ValueType:
+    from beancount.core import account as bc_account
+
+    match value.type:
+        case "account":
+            return ValueType(value.value, bc_account.TYPE)
+        case "amount":
+            return ValueType(_amount(value.value), BcAmount)
+        case "bool":
+            return ValueType(value.value, bool)
+        case "date":
+            return ValueType(value.value, dt.date)
+        case "number":
+            return ValueType(value.value, Decimal)
+    return ValueType(value.value, str)
+
+
+_OPTION_LINE = re.compile(r'^option\s+"([^"]+)"\s+"([^"]*)"\s*$')
+
+
+def _set_option(stage: Path, operation: SetOption) -> dict:
+    """Edit the option lines of the entry-point file, leaving every other line as it is."""
+    main = stage / MAIN_FILE
+    lines = main.read_text().split("\n")
+    found = [(i, m.group(2)) for i, line in enumerate(lines) if (m := _OPTION_LINE.match(line)) and m.group(1) == operation.name]
+    new_line = f'option "{operation.name}" "{operation.value}"'
+    if operation.name == "operating_currency":
+        matching = [i for i, value in found if value == operation.value]
+        if operation.remove:
+            if not matching:
+                raise TransactionNotFound(f"operating currency {operation.value} is not set")
+            lines = [line for i, line in enumerate(lines) if i not in matching]
+        elif not matching:
+            lines.insert(_after_options(lines), new_line)
+    elif operation.remove:
+        if not found:
+            raise TransactionNotFound(f"option {operation.name} is not set")
+        lines = [line for i, line in enumerate(lines) if i not in {i for i, _ in found}]
+    elif found:
+        first = found[0][0]
+        lines = [new_line if i == first else line for i, line in enumerate(lines) if i == first or i not in {j for j, _ in found}]
+    else:
+        lines.insert(_after_options(lines), new_line)
+    main.write_text("\n".join(lines))
+    return {}
+
+
+def _after_options(lines: list[str]) -> int:
+    last = max((i for i, line in enumerate(lines) if _OPTION_LINE.match(line)), default=-1)
+    return last + 1
 
 
 def _editable_record(stage: Path, entries: list, identifier: str):

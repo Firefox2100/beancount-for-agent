@@ -41,8 +41,8 @@ export interface GroupedTool {
  */
 export const CATALOGUE: Record<'core' | Group, readonly string[]> = {
   core: ['finance_ledgers', 'finance_use_ledger', 'finance_create_ledger', 'finance_accounts', 'finance_balances', 'finance_transactions', 'finance_proposals', 'finance_receipt'],
-  record: ['finance_expense', 'finance_income', 'finance_transfer', 'finance_reconcile', 'finance_recipes', 'finance_recipe', 'finance_open_account', 'finance_close_account', 'finance_amend', 'finance_delete', 'finance_withdraw', 'finance_statements', 'finance_import', 'finance_record_recurring'],
-  analysis: ['finance_goals', 'finance_checks', 'finance_budgets', 'finance_budget_suggestions', 'finance_report', 'finance_position', 'finance_open_items', 'finance_due', 'finance_credit_pools', 'finance_recurring', 'finance_recurring_suggestions'],
+  record: ['finance_expense', 'finance_income', 'finance_transfer', 'finance_reconcile', 'finance_recipes', 'finance_recipe', 'finance_open_account', 'finance_close_account', 'finance_amend', 'finance_delete', 'finance_withdraw', 'finance_statements', 'finance_import', 'finance_record_recurring', 'finance_preview_recipe', 'finance_propose_setup'],
+  analysis: ['finance_setup', 'finance_goals', 'finance_checks', 'finance_budgets', 'finance_budget_suggestions', 'finance_report', 'finance_position', 'finance_open_items', 'finance_due', 'finance_credit_pools', 'finance_recurring', 'finance_recurring_suggestions'],
 }
 
 const WAITING = 'It is waiting for the user to approve it; nothing is recorded until then. Tell the user what you proposed.'
@@ -276,6 +276,22 @@ export function financeTools(deps: ToolDeps): GroupedTool[] {
     }, async ({ args, session, ledger, signal }) =>
       proposed(await write(session, `/agent/transactions/${encodeURIComponent(String(args.id))}/deletion`, { ledger, note: args.note }, signal))),
 
+    textTool('record', 'finance_preview_recipe', 'Try a recipe you drafted: the transaction it would record for these parameters on this account. Nothing is saved. Test a draft with this before proposing it.', {
+      id: string('The recipe id you would give it: lowercase letters, digits and underscores.', true),
+      definition: { type: 'object', additionalProperties: true, description: 'The recipe as finance_setup describes it.', required: true },
+      account: string('The account to try it on.', true),
+      params: { type: 'object', additionalProperties: true, description: 'The parameters to try it with.' },
+    }, async ({ args, session, ledger, signal }) =>
+      format.preview(await write(session, '/agent/recipes/preview', { ledger, id: args.id, definition: args.definition, account: args.account, params: args.params ?? {} }, signal))),
+
+    textTool('record', 'finance_propose_setup', 'Propose a new or changed recipe, recurring item, budget or goal for the user to approve. It changes nothing until they do. Leave out the value to propose removing one.', {
+      item: { type: 'string', enum: ['recipe', 'recurring', 'budget', 'goal'], description: 'What kind of thing.', required: true },
+      id: string('The item id.', true),
+      value: { type: 'object', additionalProperties: true, description: 'The item as finance_setup describes it. Leave out to propose removing it.' },
+      note: string('Why, for the user who approves it.'),
+    }, async ({ args, session, ledger, signal }) =>
+      proposed(await write(session, '/agent/setup', { ledger, item: args.item, id: args.id, value: args.value ?? null, note: args.note }, signal))),
+
     textTool('record', 'finance_withdraw', 'Withdraw one of your pending proposals that is no longer wanted.', {
       id: string('The proposal id.', true),
       note: string('Why.'),
@@ -325,6 +341,11 @@ export function financeTools(deps: ToolDeps): GroupedTool[] {
 
     textTool('analysis', 'finance_recurring_suggestions', 'Repeating payments found in the history that no recurring item covers yet. Tell the user about them: only the user can add an item.', {},
       async ({ session, ledger, signal }) => format.recurringSuggestions(await read(session, '/agent/recurring/suggestions', { ledger }, signal))),
+
+    textTool('analysis', 'finance_setup', 'What can be set up of one kind (recipe, recurring, budget or goal): the schema of an item and the items that exist. Use it before finance_propose_setup.', {
+      item: { type: 'string', enum: ['recipe', 'recurring', 'budget', 'goal'], description: 'What kind of thing.', required: true },
+    }, async ({ args, session, ledger, signal }) =>
+      format.setup(await read(session, `/agent/setup/${String(args.item)}`, { ledger }, signal))),
 
     textTool('analysis', 'finance_goals', 'The user\'s savings goals: what is saved, what remains and, with a deadline, what to put aside each month and whether the plan arrives on time. Behind first.', {},
       async ({ session, ledger, signal }) => format.goals(await read(session, '/agent/goals', { ledger }, signal))),

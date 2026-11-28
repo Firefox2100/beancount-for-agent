@@ -683,6 +683,43 @@
     ]
   },
   {
+    "description": "What can be set up of one kind (recipe, recurring, budget, goal): the schema of an item and the items there now. Use it before propose_setup.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "item": {
+          "enum": [
+            "recipe",
+            "recurring",
+            "budget",
+            "goal"
+          ],
+          "type": "string"
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "item"
+      ],
+      "type": "object"
+    },
+    "name": "get_setup",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
     "description": "Account types that can be given when opening an account, with the recipes each one gets.",
     "inputSchema": {
       "additionalProperties": false,
@@ -992,6 +1029,193 @@
     ]
   },
   {
+    "description": "Try a recipe you drafted: the transaction it would record for these parameters on this account. Nothing is saved. Test a draft before proposing it.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "account": {
+          "type": "string"
+        },
+        "definition": {
+          "description": "A recipe as data. Performing it turns a few parameters into one transaction.",
+          "properties": {
+            "description": {
+              "type": "string"
+            },
+            "kinds": {
+              "description": "The account types it can be performed on, such as [\"checking\"].",
+              "items": {
+                "pattern": "^[a-z][a-z0-9_-]{0,31}$",
+                "type": "string"
+              },
+              "minItems": 1,
+              "type": "array"
+            },
+            "narration": {
+              "default": "",
+              "description": "May use {name} for a text, account, amount or number parameter.",
+              "type": "string"
+            },
+            "params": {
+              "patternProperties": {
+                "^[a-z][a-z0-9_]{0,31}$": {
+                  "properties": {
+                    "default": {
+                      "anyOf": [
+                        {
+                          "type": "string"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "Used when the parameter is left out. Dates default to today when not required."
+                    },
+                    "description": {
+                      "default": "",
+                      "description": "What the person or agent should give. It becomes the parameter's description.",
+                      "type": "string"
+                    },
+                    "required": {
+                      "default": true,
+                      "type": "boolean"
+                    },
+                    "type": {
+                      "enum": [
+                        "account",
+                        "amount",
+                        "text",
+                        "date",
+                        "number",
+                        "tags"
+                      ],
+                      "type": "string"
+                    },
+                    "under": {
+                      "anyOf": [
+                        {
+                          "items": {
+                            "enum": [
+                              "Assets",
+                              "Liabilities",
+                              "Equity",
+                              "Income",
+                              "Expenses"
+                            ],
+                            "type": "string"
+                          },
+                          "type": "array"
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "default": null,
+                      "description": "For an account: the account types it may be, such as [\"Expenses\"]."
+                    }
+                  },
+                  "required": [
+                    "type"
+                  ],
+                  "type": "object"
+                }
+              },
+              "type": "object"
+            },
+            "payee": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "default": null,
+              "description": "May use {name} for a text or account parameter."
+            },
+            "postings": {
+              "items": {
+                "properties": {
+                  "account": {
+                    "description": "`@self` (the account the action is performed on), `$name` (an account parameter) or a fixed account name.",
+                    "type": "string"
+                  },
+                  "amount": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ],
+                    "default": null,
+                    "description": "`$name` or `-$name` (an amount parameter), or absent for the rest of the entry."
+                  }
+                },
+                "required": [
+                  "account"
+                ],
+                "type": "object"
+              },
+              "minItems": 2,
+              "type": "array"
+            },
+            "tags": {
+              "items": {
+                "pattern": "^[A-Za-z0-9][A-Za-z0-9_\\-/.]*$",
+                "type": "string"
+              },
+              "type": "array"
+            },
+            "title": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "title",
+            "description",
+            "kinds",
+            "postings"
+          ],
+          "type": "object"
+        },
+        "id": {
+          "type": "string"
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "params": {
+          "additionalProperties": true,
+          "default": {},
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "definition",
+        "account"
+      ],
+      "type": "object"
+    },
+    "name": "preview_recipe",
+    "readOnly": true,
+    "tags": [
+      "read"
+    ]
+  },
+  {
     "description": "Propose the new lines of an uploaded statement as one batch for the user to approve.\n\nLook at the lines with get_import first and choose an account for each from the descriptions.\nLines already in the ledger are left out automatically.",
     "inputSchema": {
       "additionalProperties": false,
@@ -1067,6 +1291,72 @@
       "type": "object"
     },
     "name": "propose_import",
+    "readOnly": false,
+    "tags": [
+      "propose"
+    ]
+  },
+  {
+    "description": "Propose a new or changed recipe, recurring item, budget or goal for the user to approve. It changes nothing until they do.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "item": {
+          "description": "What kind of thing.",
+          "enum": [
+            "recipe",
+            "recurring",
+            "budget",
+            "goal"
+          ],
+          "type": "string"
+        },
+        "ledger": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "note": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "value": {
+          "anyOf": [
+            {
+              "additionalProperties": true,
+              "type": "object"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "The item as get_setup's schema describes it. Leave out to propose removing it."
+        }
+      },
+      "required": [
+        "item",
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "propose_setup",
     "readOnly": false,
     "tags": [
       "propose"

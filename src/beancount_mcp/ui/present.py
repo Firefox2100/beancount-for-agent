@@ -58,6 +58,40 @@ def line_chart(points: list, keys: tuple[str, ...]) -> dict:
     return {"lines": lines, "zero": y(0.0), "from": str(points[0].date), "to": str(points[-1].date)}
 
 
+def _flatten(value, prefix: str = "") -> list[str]:
+    """A setting as short lines a person can read: `amount: 300 USD`, `accounts: Assets:Savings`."""
+    if isinstance(value, dict):
+        if set(value) == {"number", "currency"}:
+            return [f"{prefix}{grouped(value['number'])} {value['currency']}"]
+        found = []
+        for key, inner in value.items():
+            lines = _flatten(inner, "")
+            found.append(f"{prefix}{key}: {lines[0]}" if len(lines) == 1 else f"{prefix}{key}:")
+            if len(lines) > 1:
+                found.extend(f"  {line}" for line in lines)
+        return found
+    if isinstance(value, list):
+        return [", ".join(str(item) if not isinstance(item, dict) else "; ".join(_flatten(item)) for item in value)] if value else ["(none)"]
+    return [f"{prefix}{value}"]
+
+
+def _profile_block(operation) -> Block:
+    from beancount_mcp.models.declarative import RecipeDefinition
+    from beancount_mcp.recipes import declarative
+
+    verb = "Remove" if operation.value is None else "Set"
+    title = f"{verb} {operation.item} {operation.id}"
+    if operation.value is None:
+        return Block(title, lines=["This only changes how the ledger is treated, not its entries."])
+    if operation.item == "recipe":
+        try:
+            lines = declarative.summary(RecipeDefinition.model_validate(operation.value))
+        except ValueError:
+            lines = _flatten(operation.value)
+        return Block(f"{title}: {operation.value.get('title', '')}", lines=lines)
+    return Block(title, lines=_flatten(operation.value))
+
+
 def describe(operation: Operation) -> list[Block]:
     match operation.kind:
         case "add_transaction" | "update_transaction":
@@ -76,6 +110,10 @@ def describe(operation: Operation) -> list[Block]:
             return [Block(f"Attach receipt {name} to {operation.directive.account}", receipt=operation.directive.path)]
         case "attach_receipt":
             return [Block(f"Attach receipt {operation.path.rsplit('/', 1)[-1]} to {operation.id}", receipt=operation.path)]
+        case "set_profile_item":
+            return [_profile_block(operation)]
+        case "set_option":
+            return [Block(f"{'Clear' if operation.remove else 'Set'} the ledger option {operation.name}" + ("" if operation.remove and operation.name != "operating_currency" else f": {operation.value}"))]
         case "open_account":
             lines = [f"currencies: {', '.join(operation.currencies)}"] if operation.currencies else []
             if operation.type:

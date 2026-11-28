@@ -54,8 +54,19 @@ Text that reaches the ledger is validated (no control characters, patterns for a
 
 ## Editing alongside Fava
 
-You can open the same ledger in Fava. The service notices when files change under it. A proposal that targets an entry you edited by hand is refused at approval, rather than silently overwriting your edit. See [Fava](../guides/fava.md).
+You can open the same ledger in Fava. The service notices when files change under it:
+
+- **A change in flight is computed again.** A change is worked out on a copy of the ledger files. If a file changed while it was being prepared (you saved in Fava at that moment), it is simply worked out again on what is there now, up to three times, so both edits survive. A caller that pinned a version with `If-Match` gets the conflict instead, because it asked for exactly that state.
+- **An entry you edited is protected.** A proposal that updates or deletes an entry you edited by hand since it was proposed is refused at approval, rather than silently overwriting your edit.
+- **Comments and hand-written entries are left alone.** Edits are made by position in the file, so what the service did not write stays as it was.
+
+See [Fava](../guides/fava.md).
 
 ## What is supported
 
-Transactions, balance assertions, pads, prices, commodities, notes and events, and opening and closing accounts. A `batch` groups several additions into one atomic change. Options, documents, queries and custom directives are not yet supported by the operations, though the engine reads ledgers that contain them.
+Transactions, balance assertions, pads, prices, commodities, notes, events, documents (as [receipts](receipts.md)), saved queries and `custom` entries, opening and closing accounts, and a few ledger options. A `batch` groups several additions into one atomic change.
+
+- **Saved queries** (`query`) are stored with a name and the query text. The service never runs them: Fava does.
+- **Custom entries** (`custom`) hold a type and typed values (string, number, amount, account, date or true/false), which other Beancount tools such as Fava read.
+- **Options** are changed with `PUT /ledgers/{id}/options/{name}` and read with `GET /ledgers/{id}/options`. Only the safe ones are supported: `title`, `operating_currency` (which may be set several times: setting adds one, `remove` takes one away), `render_commas` and `booking_method`. Only that option's line in the main file is touched. Agents propose them like any other change.
+- Not supported: `plugin`, `include` and the other options, which change how the ledger is read and belong to whoever runs it.

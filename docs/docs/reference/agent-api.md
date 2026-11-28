@@ -41,12 +41,15 @@ The agent API serves the [MCP tools](mcp-tools.md)' operations over HTTP, for ha
 | `POST` | `/agent/proposals/{change_id}/withdraw` | Withdraw |
 | `GET` | `/agent/receipts/read` | The text of a receipt the user stored, read on first use and kept. `receipt` is its path, its file name or the id of a transaction with one receipt. |
 | `GET` | `/agent/recipes` | Recipes |
+| `POST` | `/agent/recipes/preview` | The transaction a recipe definition would record for these parameters. Nothing is saved: use it to test a draft. |
 | `POST` | `/agent/reconciliations` | Reconcile |
 | `GET` | `/agent/recurring` | Recurring items with what is overdue or coming up and not yet recorded. |
 | `GET` | `/agent/recurring/suggestions` | Repeating payments in the history that no recurring item covers. Only the user can add an item. |
 | `POST` | `/agent/recurring/{item_id}/proposal` | Propose recording one occurrence of a recurring item. |
 | `GET` | `/agent/reference-rates/status` | Reference Rate Status |
 | `GET` | `/agent/reports/income-statement` | Income and expenses over a period (this month so far by default), by account. Drill into a group with `account`. |
+| `POST` | `/agent/setup` | Propose adding, changing or removing a recipe, recurring item, budget or goal. A person approves it; nothing changes until then. |
+| `GET` | `/agent/setup/{item}` | What can be set up of this kind: the schema of one item and the items there now. |
 | `GET` | `/agent/transactions` | Transactions |
 | `POST` | `/agent/transactions/{transaction_id}/amend` | Propose correcting a recorded transaction's date, payee, narration or tags. |
 | `POST` | `/agent/transactions/{transaction_id}/deletion` | Propose removing a recorded transaction. |

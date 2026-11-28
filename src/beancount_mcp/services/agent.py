@@ -48,7 +48,11 @@ from beancount_mcp.models.goals import GoalStatus
 from beancount_mcp.models.reports import IncomeStatement
 from beancount_mcp.models.recurring import RecurringStatus, RecurringSuggestion
 from beancount_mcp.services.changes import ChangeService
+from beancount_mcp.ledger import profile_items
+from beancount_mcp.models import SetProfileItem
+from beancount_mcp.models.declarative import RecipeDefinition
 from beancount_mcp.services.imports import ImportService
+from beancount_mcp.services.profiles import ProfileService
 from beancount_mcp.services.receipts import ReceiptAccess, ReceiptService
 from beancount_mcp.services.ledgers import LedgerService
 from beancount_mcp.services.resolve import resolve_account, resolve_params
@@ -68,6 +72,7 @@ class AgentService:
         views: ViewService,
         imports: ImportService,
         receipts: ReceiptService,
+        profiles: ProfileService,
     ):
         self._store = store
         self._ledgers = ledgers
@@ -76,6 +81,7 @@ class AgentService:
         self._views = views
         self._imports = imports
         self._receipts = receipts
+        self._profiles = profiles
 
     async def resolve_ledger(self, ledger: str | None) -> str:
         """The named ledger, or the only one when there is exactly one."""
@@ -221,6 +227,28 @@ class AgentService:
 
     async def _receipt_paths(self, ledger_id: str, receipt: str | None) -> list[str]:
         return [await self._receipts.find(ledger_id, receipt)] if receipt else []
+
+    async def setup(self, ledger: str | None, item: str) -> dict:
+        """What can be set up of one kind: its schema and what is there now. The agent proposes changes; a person approves."""
+        ledger_id = await self.resolve_ledger(ledger)
+        profile = (await self._profiles.get(ledger_id)).profile
+        model, _, collection = profile_items.ITEMS[item]
+        current = getattr(profile, collection)
+        return {
+            "item": item,
+            "schema": model.model_json_schema(),
+            "current": {key: value.model_dump(mode="json", exclude_none=True) for key, value in current.items()},
+        }
+
+    async def propose_setup(
+        self, ledger: str | None, item: str, item_id: str, value: dict | None, note: str | None, caller: Caller, version: str | None
+    ) -> PendingChange:
+        operation = SetProfileItem(item=item, id=item_id, value=value)  # type: ignore[arg-type]
+        return await self.propose_operation(ledger, operation, note, caller, version)
+
+    async def preview_recipe(self, ledger: str | None, recipe_id: str, definition: RecipeDefinition, account: str, params: dict) -> Operation:
+        ledger_id = await self.resolve_ledger(ledger)
+        return await self._actions.preview(ledger_id, recipe_id, definition, await self._find(ledger_id, account), resolve_params(await self._ledgers.list_accounts(ledger_id), params))
 
     async def reference_rate_status(self) -> ReferenceRateStatus:
         return await self._views.reference_rate_status()

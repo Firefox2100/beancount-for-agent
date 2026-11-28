@@ -60,4 +60,32 @@ A reimbursement claim, a loan to a person, an invoice and a bill to pay are one 
 Built-in recipes use the same interface as extensions. A recipe has an id, a title, the account types it applies to, a pydantic parameter model (its JSON schema is what agents see) and `compile(params, context)`, which returns one operation. The context is read-only: the account, its profile, the ledger's accounts and their balances.
 
 - Python plugins register recipes through the `beancount_mcp.recipes` entry point group. The entry point is a callable that receives the registry. Whoever deploys the service installs the plugins; agents cannot install them. Plugin output still passes validation.
-- Declarative recipes, stored as data files with posting patterns, are planned. An agent may draft one as a proposal for you to approve because the data cannot run code. Python plugins are never accepted through a tool.
+- Declarative recipes are written as data in the ledger's profile, below. An agent may draft one as a proposal for you to approve, because the data cannot run code. Python plugins are never accepted through a tool.
+
+## Recipes as data
+
+A recipe can be written as data instead of code. It names its parameters and the postings they produce, and nothing else. It is saved in the ledger's profile, so it belongs to that ledger, and it appears next to the built-in recipes for the account types it names.
+
+```json
+{
+  "title": "Bank fee",
+  "description": "A fee the bank took from this account.",
+  "kinds": ["checking"],
+  "params": { "fee": { "type": "amount", "description": "What was taken." } },
+  "narration": "Bank fee",
+  "postings": [
+    { "account": "@self", "amount": "-$fee" },
+    { "account": "Expenses:Fees", "amount": "$fee" }
+  ]
+}
+```
+
+- **Parameters** have a type: `account` (optionally `under` some account types), `amount`, `text`, `date`, `number` or `tags`. They are required unless they have a default. `date` is always there and defaults to today. The JSON schema agents see is built from this, like any recipe's.
+- **Postings.** The account is `@self` (the account the action is performed on), `$name` (an account parameter) or a fixed account name. The amount is `$name`, `-$name`, or absent for the rest of the entry, so it balances. At most one posting may leave its amount out.
+- **Amounts** go through the same leniency as built-in recipes: the sign is ignored, formulas are worked out, and a bare number needs an account with one currency.
+- **Text** (`payee`, `narration`) may use `{name}` for a text, account or number parameter, and `{name}` for an amount in the narration.
+- **There is nothing else.** No arithmetic, conditions or loops, so a definition cannot become a program. If a recipe needs more, it is a Python plugin.
+
+A definition is checked when it is saved: parameters used must exist, amounts must be amount parameters, it cannot reuse a built-in recipe's id, and a parameter a posting needs cannot be optional. The profile also warns when a definition names an account that is not open.
+
+You define one with `PUT /ledgers/{id}/recipe-definitions/{id}`, and try it first with `POST .../preview`, which shows the transaction it would record without saving or writing anything. An agent drafts one with `preview_recipe` and `propose_setup`: see [Setting things up](setup.md).
